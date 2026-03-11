@@ -27,6 +27,7 @@ PluginComponent {
     property string busyLabel: ""
     property bool busy: false
     property var dependencyStatus: DependencyUtils.defaultStatus()
+    property var livePopout: null
 
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
@@ -121,12 +122,8 @@ PluginComponent {
     }
 
     function findPluginPopout() {
-        const items = root.childItems || [];
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item && typeof item.toggle === "function" && typeof item.close === "function" && item.shouldBeVisible !== undefined) {
-                return item;
-            }
+        if (livePopout && livePopout.shouldBeVisible !== undefined) {
+            return livePopout;
         }
         return null;
     }
@@ -496,6 +493,12 @@ PluginComponent {
             detailsText: root.detailsText()
             showCloseButton: true
             readonly property real maxBodyHeight: root.maxTranslateViewHeight
+
+            onParentPopoutChanged: {
+                if (parentPopout) {
+                    root.livePopout = parentPopout;
+                }
+            }
 
             Item {
                 width: parent.width
