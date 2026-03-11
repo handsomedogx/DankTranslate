@@ -510,25 +510,14 @@ PluginComponent {
 
                     anchors.fill: parent
                     contentWidth: width
-                    contentHeight: popoutBodyColumn.implicitHeight
+                    contentHeight: popoutBodyLoader.item ? popoutBodyLoader.item.implicitHeight : 0
                     clip: true
 
-                    Column {
-                        id: popoutBodyColumn
+                    Loader {
+                        id: popoutBodyLoader
+
                         width: popoutBodyFlick.width
-                        spacing: Theme.spacingM
-
-                        Loader {
-                            width: parent.width
-                            active: root.currentView === "actions"
-                            sourceComponent: actionsView
-                        }
-
-                        Loader {
-                            width: parent.width
-                            active: root.currentView === "translate"
-                            sourceComponent: translateView
-                        }
+                        sourceComponent: root.currentView === "actions" ? actionsView : translateView
                     }
                 }
             }
