@@ -1,0 +1,15 @@
+{
+  "id": "dankTranslate",
+  "name": "Dank Translate",
+  "description": "Translate English and Chinese text from a bar popout or screenshot OCR workflow.",
+  "version": "0.1.0",
+  "author": "Codex",
+  "icon": "translate",
+  "type": "widget",
+  "capabilities": ["dankbar-widget", "translation", "ocr", "ipc"],
+  "component": "./DankTranslateWidget.qml",
+  "settings": "./DankTranslateSettings.qml",
+  "requires_dms": ">=1.4.0",
+  "requires": ["python3", "tesseract"],
+  "permissions": ["settings_read", "settings_write", "process", "network"]
+}
