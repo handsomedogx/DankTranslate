@@ -685,6 +685,15 @@ PluginComponent {
                     width: parent.width
                     spacing: Theme.spacingM
 
+                    function requestInputFocus() {
+                        Qt.callLater(() => {
+                            inputEditor.forceActiveFocus();
+                            inputEditor.ensureCursorVisible();
+                        });
+                    }
+
+                    Component.onCompleted: requestInputFocus()
+
                     Connections {
                         target: root
 
