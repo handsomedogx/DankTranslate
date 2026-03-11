@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "DependencyUtils.js" as DependencyUtils
+import "I18n.js" as I18n
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -29,7 +30,8 @@ PluginComponent {
 
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
-    readonly property string targetName: languageNameForCode(targetLang)
+    readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
+    readonly property string targetName: I18n.languageName(uiLanguage, targetLang)
     readonly property real availableScreenHeight: root.parentScreen?.height ?? Screen.height
     readonly property real maxTranslateViewHeight: Math.max(260, Math.min(680, availableScreenHeight - 180))
     readonly property real maxInputViewportHeight: 220
@@ -38,8 +40,8 @@ PluginComponent {
         && dependencyStatus.dms && dependencyStatus.python3 && dependencyStatus.helper && dependencyStatus.probeError.length === 0
     readonly property bool canScreenshotTranslate: canTranslateText && dependencyStatus.tesseract
         && dependencyStatus.missingOcrLanguages.length === 0
-    readonly property string translateDependencyMessage: DependencyUtils.getTranslateMessage(dependencyStatus)
-    readonly property string screenshotDependencyMessage: DependencyUtils.getScreenshotMessage(dependencyStatus)
+    readonly property string translateDependencyMessage: DependencyUtils.getTranslateMessage(dependencyStatus, uiLanguage)
+    readonly property string screenshotDependencyMessage: DependencyUtils.getScreenshotMessage(dependencyStatus, uiLanguage)
     readonly property string dependencyBannerText: {
         if (translateDependencyMessage.length > 0) {
             return translateDependencyMessage;
@@ -96,24 +98,8 @@ PluginComponent {
         saveSetting("targetLang", languageCode);
     }
 
-    function languageNameForCode(languageCode) {
-        if (languageCode === "auto") {
-            return "Auto";
-        }
-        if (languageCode === "en") {
-            return "English";
-        }
-        if (languageCode === "zh-CN" || languageCode === "zh") {
-            return "中文";
-        }
-        return languageCode || "Unknown";
-    }
-
     function targetButtonText() {
-        if (targetLang === "auto") {
-            return "Auto EN/ZH";
-        }
-        return "To " + targetName;
+        return I18n.targetButtonText(uiLanguage, targetLang);
     }
 
     function toggleTargetLang() {
@@ -260,10 +246,12 @@ PluginComponent {
             "dankTranslate.dependencies",
             ["sh", dependencyScriptPath, ocrLanguages],
             (stdout, exitCode) => {
-                let parsed = DependencyUtils.parseProbeOutput(stdout);
+                let parsed = DependencyUtils.parseProbeOutput(stdout, uiLanguage);
                 parsed.loading = false;
                 if (exitCode !== 0 && !parsed.probeError) {
-                    parsed.probeError = "Dependency probe exited with code " + exitCode;
+                    parsed.probeError = I18n.t(uiLanguage, "dependencyProbeExitCode", {
+                        "code": exitCode
+                    });
                 }
                 dependencyStatus = parsed;
             },
@@ -277,7 +265,7 @@ PluginComponent {
         }
         lastError = message;
         saveState("lastError", lastError);
-        ToastService.showError("Dank Translate unavailable", message, "", "dank-translate");
+        ToastService.showError(I18n.t(uiLanguage, "pluginUnavailableTitle"), message, "", "dank-translate");
     }
 
     function applyResponse(stdout, exitCode) {
@@ -302,11 +290,11 @@ PluginComponent {
         }
 
         if (!payload || !payload.ok) {
-            lastError = payload?.error || (raw.length > 0 ? raw : "Translation request failed.");
+            lastError = payload?.error || (raw.length > 0 ? raw : I18n.t(uiLanguage, "genericRequestFailed"));
             statusText = "";
             saveState("lastError", lastError);
             saveState("statusText", statusText);
-            ToastService.showError("Dank Translate failed", lastError, "", "dank-translate");
+            ToastService.showError(I18n.t(uiLanguage, "pluginFailedTitle"), lastError, "", "dank-translate");
             finishJob();
             return;
         }
@@ -321,10 +309,10 @@ PluginComponent {
             openView("translate");
         }
 
-        const resolvedTargetName = languageNameForCode(payload.target_language || targetLang);
+        const resolvedTargetName = I18n.languageName(uiLanguage, payload.target_language || targetLang);
         statusText = payload.mode === "screenshot"
-            ? "Screenshot OCR translated to " + resolvedTargetName
-            : "Translated to " + resolvedTargetName;
+            ? I18n.t(uiLanguage, "screenshotTranslatedTo", {"language": resolvedTargetName})
+            : I18n.t(uiLanguage, "translatedTo", {"language": resolvedTargetName});
 
         saveState("lastInput", inputText);
         saveState("lastTranslation", translatedText);
@@ -333,11 +321,11 @@ PluginComponent {
         saveState("statusText", statusText);
 
         if (autoCopyResult && translatedText.length > 0) {
-            copyText(translatedText, "Translated text copied");
+            copyText(translatedText, I18n.t(uiLanguage, "translatedTextCopied"));
         }
 
         if (payload.mode === "screenshot") {
-            ToastService.showInfo("Screenshot translated", statusText, "", "dank-translate");
+            ToastService.showInfo(I18n.t(uiLanguage, "screenshotTranslatedTitle"), statusText, "", "dank-translate");
         }
 
         finishJob();
@@ -351,13 +339,13 @@ PluginComponent {
 
         const trimmed = (inputText || "").trim();
         if (trimmed.length === 0) {
-            lastError = "Enter some text before translating.";
+            lastError = I18n.t(uiLanguage, "enterTextBeforeTranslating");
             saveState("lastError", lastError);
             return;
         }
 
         persistLiveInput();
-        startJob("Translating text...");
+        startJob(I18n.t(uiLanguage, "translatingText"));
 
         Proc.runCommand(
             "dankTranslate.translate",
@@ -373,7 +361,7 @@ PluginComponent {
             return;
         }
 
-        startJob("Select an area for screenshot translation...");
+        startJob(I18n.t(uiLanguage, "selectScreenshotArea"));
         closePopout();
 
         Proc.runCommand(
@@ -397,7 +385,7 @@ PluginComponent {
     }
 
     function headerText() {
-        return currentView === "actions" ? "Dank Translate Actions" : "Dank Translate";
+        return currentView === "actions" ? I18n.t(uiLanguage, "actionsHeader") : "Dank Translate";
     }
 
     function detailsText() {
@@ -411,12 +399,14 @@ PluginComponent {
             return statusText;
         }
         if (currentView === "actions") {
-            return "Right click the bar icon for quick actions, or bind the IPC targets for keyboard access.";
+            return I18n.t(uiLanguage, "actionsDetails");
         }
         if (targetLang === "auto") {
-            return "Auto-detect Chinese vs English input and translate to the opposite language. Use Ctrl+Enter to translate from the editor.";
+            return I18n.t(uiLanguage, "autoDetails");
         }
-        return "Auto-detect input text and translate it to " + targetName + ". Use Ctrl+Enter to translate from the editor.";
+        return I18n.t(uiLanguage, "fixedDetails", {
+            "language": targetName
+        });
     }
 
     Component.onCompleted: {
@@ -550,7 +540,7 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                text: "Quick actions for keyboard-first use."
+                                text: I18n.t(root.uiLanguage, "quickActionsIntro")
                                 color: Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeMedium
                                 wrapMode: Text.WordWrap
@@ -562,14 +552,14 @@ PluginComponent {
 
                                 DankButton {
                                     width: (parent.width - Theme.spacingS) / 2
-                                    text: "Open Translator"
+                                    text: I18n.t(root.uiLanguage, "openTranslator")
                                     iconName: "translate"
                                     onClicked: root.openView("translate")
                                 }
 
                                 DankButton {
                                     width: (parent.width - Theme.spacingS) / 2
-                                    text: "Screenshot OCR"
+                                    text: I18n.t(root.uiLanguage, "screenshotOcr")
                                     iconName: "image_search"
                                     enabled: !root.busy && root.canScreenshotTranslate
                                     onClicked: root.screenshotTranslate()
@@ -589,7 +579,7 @@ PluginComponent {
 
                                 DankButton {
                                     width: (parent.width - Theme.spacingS) / 2
-                                    text: "Clear Results"
+                                    text: I18n.t(root.uiLanguage, "clearResults")
                                     iconName: "delete"
                                     onClicked: root.clearResults()
                                 }
@@ -597,7 +587,9 @@ PluginComponent {
 
                             DankButton {
                                 width: parent.width
-                                text: root.dependencyStatus.loading ? "Checking dependencies..." : "Refresh Dependency Check"
+                                text: root.dependencyStatus.loading
+                                    ? I18n.t(root.uiLanguage, "checkingDependencies")
+                                    : I18n.t(root.uiLanguage, "refreshDependencyCheck")
                                 iconName: root.dependencyStatus.loading ? "hourglass_top" : "refresh"
                                 enabled: !root.dependencyStatus.loading
                                 onClicked: root.refreshDependencyStatus()
@@ -621,7 +613,7 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                text: "Suggested keybind IPC targets"
+                                text: I18n.t(root.uiLanguage, "suggestedKeybindTargets")
                                 font.pixelSize: Theme.fontSizeMedium
                                 font.weight: Font.DemiBold
                                 color: Theme.surfaceText
@@ -629,7 +621,12 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                text: DependencyUtils.formatStatusLine("Text translation", root.canTranslateText, root.translateDependencyMessage)
+                                text: DependencyUtils.formatStatusLine(
+                                    I18n.t(root.uiLanguage, "textTranslation"),
+                                    root.canTranslateText,
+                                    root.translateDependencyMessage,
+                                    root.uiLanguage
+                                )
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: root.canTranslateText ? Theme.surfaceVariantText : Theme.warning
@@ -637,7 +634,12 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                text: DependencyUtils.formatStatusLine("Screenshot OCR", root.canScreenshotTranslate, root.screenshotDependencyMessage)
+                                text: DependencyUtils.formatStatusLine(
+                                    I18n.t(root.uiLanguage, "screenshotOcr"),
+                                    root.canScreenshotTranslate,
+                                    root.screenshotDependencyMessage,
+                                    root.uiLanguage
+                                )
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: root.canScreenshotTranslate ? Theme.surfaceVariantText : Theme.warning
@@ -705,21 +707,23 @@ PluginComponent {
                             y: Theme.spacingM
                             spacing: Theme.spacingXS
 
-                            StyledText {
-                                width: parent.width
-                                text: root.dependencyStatus.loading ? "Checking dependencies..." : "Runtime checks"
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.weight: Font.DemiBold
-                                color: Theme.surfaceText
+                                    StyledText {
+                                        width: parent.width
+                                        text: root.dependencyStatus.loading
+                                            ? I18n.t(root.uiLanguage, "checkingDependencies")
+                                            : I18n.t(root.uiLanguage, "runtimeChecks")
+                                        font.pixelSize: Theme.fontSizeMedium
+                                        font.weight: Font.DemiBold
+                                        color: Theme.surfaceText
                             }
 
-                            StyledText {
-                                width: parent.width
-                                text: root.dependencyStatus.loading
-                                    ? "Validating python3, tesseract, helper scripts, and OCR language packs."
-                                    : root.dependencyBannerText
-                                wrapMode: Text.WordWrap
-                                color: root.dependencyBannerText.length > 0 ? Theme.warning : Theme.surfaceVariantText
+                                    StyledText {
+                                        width: parent.width
+                                        text: root.dependencyStatus.loading
+                                            ? I18n.t(root.uiLanguage, "validatingDependencies")
+                                            : root.dependencyBannerText
+                                        wrapMode: Text.WordWrap
+                                        color: root.dependencyBannerText.length > 0 ? Theme.warning : Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeSmall
                             }
                         }
@@ -738,7 +742,7 @@ PluginComponent {
 
                         DankButton {
                             width: (parent.width - Theme.spacingS * 2) / 3
-                            text: "Screenshot"
+                            text: I18n.t(root.uiLanguage, "screenshot")
                             iconName: "image_search"
                             enabled: !root.busy && root.canScreenshotTranslate
                             onClicked: root.screenshotTranslate()
@@ -746,7 +750,7 @@ PluginComponent {
 
                         DankButton {
                             width: (parent.width - Theme.spacingS * 2) / 3
-                            text: "Actions"
+                            text: I18n.t(root.uiLanguage, "actions")
                             iconName: "more_horiz"
                             onClicked: root.openView("actions")
                         }
@@ -814,7 +818,7 @@ PluginComponent {
 
                             StyledText {
                                 width: inputFlickable.width
-                                text: "Type or paste a word or sentence here. Press Ctrl+Enter to translate."
+                                text: I18n.t(root.uiLanguage, "inputPlaceholder")
                                 color: Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeMedium
                                 wrapMode: Text.WordWrap
@@ -829,7 +833,9 @@ PluginComponent {
 
                         DankButton {
                             width: (parent.width - Theme.spacingS * 2) / 3
-                            text: root.dependencyStatus.loading ? "Checking..." : (root.busy ? "Working..." : "Translate")
+                            text: root.dependencyStatus.loading
+                                ? I18n.t(root.uiLanguage, "checkingShort")
+                                : (root.busy ? I18n.t(root.uiLanguage, "working") : I18n.t(root.uiLanguage, "translate"))
                             iconName: root.busy ? "hourglass_top" : "send"
                             enabled: !root.busy && root.canTranslateText
                             onClicked: root.translateInput()
@@ -837,15 +843,15 @@ PluginComponent {
 
                         DankButton {
                             width: (parent.width - Theme.spacingS * 2) / 3
-                            text: "Copy Result"
+                            text: I18n.t(root.uiLanguage, "copyResult")
                             iconName: "content_copy"
                             enabled: root.translatedText.length > 0
-                            onClicked: root.copyText(root.translatedText, "Translated text copied")
+                            onClicked: root.copyText(root.translatedText, I18n.t(root.uiLanguage, "translatedTextCopied"))
                         }
 
                         DankButton {
                             width: (parent.width - Theme.spacingS * 2) / 3
-                            text: "Clear"
+                            text: I18n.t(root.uiLanguage, "clear")
                             iconName: "delete"
                             enabled: root.inputText.length > 0 || root.translatedText.length > 0
                             onClicked: root.resetAll()
@@ -868,7 +874,7 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                text: "Translation"
+                                text: I18n.t(root.uiLanguage, "translation")
                                 font.pixelSize: Theme.fontSizeMedium
                                 font.weight: Font.DemiBold
                                 color: Theme.surfaceText
@@ -887,7 +893,7 @@ PluginComponent {
                                     id: translationText
 
                                     width: translationFlickable.width
-                                    text: root.translatedText.length > 0 ? root.translatedText : "Translated text will appear here."
+                                    text: root.translatedText.length > 0 ? root.translatedText : I18n.t(root.uiLanguage, "translationPlaceholder")
                                     wrapMode: Text.WordWrap
                                     color: root.translatedText.length > 0 ? Theme.surfaceText : Theme.surfaceVariantText
                                     font.pixelSize: Theme.fontSizeMedium
@@ -897,7 +903,7 @@ PluginComponent {
                             StyledText {
                                 width: parent.width
                                 visible: root.lastDetectedSource.length > 0
-                                text: "Detected source: " + root.lastDetectedSource
+                                text: I18n.t(root.uiLanguage, "detectedSource", {"value": root.lastDetectedSource})
                                 wrapMode: Text.WordWrap
                                 color: Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeSmall

@@ -1,5 +1,6 @@
 import QtQuick
 import "DependencyUtils.js" as DependencyUtils
+import "I18n.js" as I18n
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
@@ -9,6 +10,7 @@ PluginSettings {
     pluginId: "dankTranslate"
 
     property var dependencyStatus: DependencyUtils.defaultStatus()
+    readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
 
     function resolveFilePath(relativePath) {
@@ -28,10 +30,12 @@ PluginSettings {
             "dankTranslate.settings.dependencies",
             ["sh", dependencyScriptPath, root.loadValue("ocrLanguages", "eng+chi_sim")],
             (stdout, exitCode) => {
-                let parsed = DependencyUtils.parseProbeOutput(stdout);
+                let parsed = DependencyUtils.parseProbeOutput(stdout, uiLanguage);
                 parsed.loading = false;
                 if (exitCode !== 0 && !parsed.probeError) {
-                    parsed.probeError = "Dependency probe exited with code " + exitCode;
+                    parsed.probeError = I18n.t(uiLanguage, "dependencyProbeExitCode", {
+                        "code": exitCode
+                    });
                 }
                 dependencyStatus = parsed;
             },
@@ -59,7 +63,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "A bar translation plugin with popup translation, keyboard-triggered IPC entry points, and screenshot OCR translation."
+        text: I18n.t(root.uiLanguage, "pluginDescription")
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
@@ -80,7 +84,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Dependencies"
+                text: I18n.t(root.uiLanguage, "dependencies")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.DemiBold
                 color: Theme.surfaceText
@@ -88,7 +92,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Required tools: python3, tesseract, and the DMS CLI. For Chinese OCR install the Tesseract language data for chi_sim in addition to eng."
+                text: I18n.t(root.uiLanguage, "dependencyIntro")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 wrapMode: Text.WordWrap
@@ -96,42 +100,25 @@ PluginSettings {
 
             DankDropdown {
                 width: parent.width
-                text: "Translation direction"
-                description: "Auto translates Chinese to English and English to Chinese. You can still force a fixed target."
-                options: ["Auto", "中文", "English"]
-                currentValue: {
-                    const value = root.loadValue("targetLang", "auto");
-                    if (value === "en") {
-                        return "English";
-                    }
-                    if (value === "zh-CN") {
-                        return "中文";
-                    }
-                    return "Auto";
-                }
-                onValueChanged: {
-                    if (value === "English") {
-                        root.saveValue("targetLang", "en");
-                    } else if (value === "中文") {
-                        root.saveValue("targetLang", "zh-CN");
-                    } else {
-                        root.saveValue("targetLang", "auto");
-                    }
-                }
+                text: I18n.t(root.uiLanguage, "translationDirection")
+                description: I18n.t(root.uiLanguage, "translationDirectionDescription")
+                options: I18n.directionOptions(root.uiLanguage)
+                currentValue: I18n.directionLabel(root.uiLanguage, root.loadValue("targetLang", "auto"))
+                onValueChanged: root.saveValue("targetLang", I18n.directionValue(root.uiLanguage, value))
             }
 
             DankDropdown {
                 width: parent.width
-                text: "Screenshot mode"
-                description: "The mode used when starting screenshot translation from the icon or IPC shortcut."
-                options: ["region", "full", "window", "all"]
-                currentValue: root.loadValue("screenshotMode", "region")
-                onValueChanged: root.saveValue("screenshotMode", value)
+                text: I18n.t(root.uiLanguage, "screenshotMode")
+                description: I18n.t(root.uiLanguage, "screenshotModeDescription")
+                options: I18n.screenshotModeOptions(root.uiLanguage)
+                currentValue: I18n.screenshotModeLabel(root.uiLanguage, root.loadValue("screenshotMode", "region"))
+                onValueChanged: root.saveValue("screenshotMode", I18n.screenshotModeValue(root.uiLanguage, value))
             }
 
             StyledText {
                 width: parent.width
-                text: "OCR languages"
+                text: I18n.t(root.uiLanguage, "ocrLanguages")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.Medium
                 color: Theme.surfaceText
@@ -148,7 +135,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Use Tesseract language codes joined by +, for example eng+chi_sim."
+                text: I18n.t(root.uiLanguage, "ocrLanguagesDescription")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 wrapMode: Text.WordWrap
@@ -171,7 +158,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Diagnostics"
+                text: I18n.t(root.uiLanguage, "diagnostics")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.DemiBold
                 color: Theme.surfaceText
@@ -180,8 +167,8 @@ PluginSettings {
             StyledText {
                 width: parent.width
                 text: dependencyStatus.loading
-                    ? "Checking dependencies..."
-                    : DependencyUtils.formatStatusLine("DMS CLI", dependencyStatus.dms, "")
+                    ? I18n.t(root.uiLanguage, "checkingDependencies")
+                    : DependencyUtils.formatStatusLine("DMS CLI", dependencyStatus.dms, "", root.uiLanguage)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.loading || dependencyStatus.dms ? Theme.surfaceVariantText : Theme.warning
@@ -189,7 +176,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine("python3", dependencyStatus.python3, "")
+                text: DependencyUtils.formatStatusLine("python3", dependencyStatus.python3, "", root.uiLanguage)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.python3 ? Theme.surfaceVariantText : Theme.warning
@@ -197,7 +184,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine("Translate helper", dependencyStatus.helper, "")
+                text: DependencyUtils.formatStatusLine(I18n.t(root.uiLanguage, "translateHelperScript"), dependencyStatus.helper, "", root.uiLanguage)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.helper ? Theme.surfaceVariantText : Theme.warning
@@ -205,7 +192,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine("tesseract", dependencyStatus.tesseract, "")
+                text: DependencyUtils.formatStatusLine("tesseract", dependencyStatus.tesseract, "", root.uiLanguage)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.tesseract ? Theme.surfaceVariantText : Theme.warning
@@ -213,7 +200,11 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Requested OCR languages: " + (dependencyStatus.requiredOcrLanguages.length > 0 ? dependencyStatus.requiredOcrLanguages.join(", ") : "none")
+                text: I18n.t(root.uiLanguage, "requestedOcrLanguages", {
+                    "value": dependencyStatus.requiredOcrLanguages.length > 0
+                        ? I18n.joinList(root.uiLanguage, dependencyStatus.requiredOcrLanguages)
+                        : I18n.t(root.uiLanguage, "none")
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
@@ -221,9 +212,11 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: dependencyStatus.missingOcrLanguages.length > 0
-                    ? "Missing OCR languages: " + dependencyStatus.missingOcrLanguages.join(", ")
-                    : "Missing OCR languages: none"
+                text: I18n.t(root.uiLanguage, "missingOcrLanguages", {
+                    "value": dependencyStatus.missingOcrLanguages.length > 0
+                        ? I18n.joinList(root.uiLanguage, dependencyStatus.missingOcrLanguages)
+                        : I18n.t(root.uiLanguage, "none")
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.missingOcrLanguages.length > 0 ? Theme.warning : Theme.surfaceVariantText
@@ -231,9 +224,11 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: dependencyStatus.availableOcrLanguages.length > 0
-                    ? "Installed OCR languages: " + dependencyStatus.availableOcrLanguages.join(", ")
-                    : "Installed OCR languages: unavailable"
+                text: I18n.t(root.uiLanguage, "installedOcrLanguages", {
+                    "value": dependencyStatus.availableOcrLanguages.length > 0
+                        ? I18n.joinList(root.uiLanguage, dependencyStatus.availableOcrLanguages)
+                        : I18n.t(root.uiLanguage, "unavailable")
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
@@ -242,7 +237,7 @@ PluginSettings {
             StyledText {
                 width: parent.width
                 visible: dependencyStatus.probeError.length > 0
-                text: "Check error: " + dependencyStatus.probeError
+                text: I18n.t(root.uiLanguage, "checkError", {"error": dependencyStatus.probeError})
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.warning
@@ -250,8 +245,8 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.getTranslateMessage(dependencyStatus)
-                visible: DependencyUtils.getTranslateMessage(dependencyStatus).length > 0
+                text: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage)
+                visible: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage).length > 0
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.warning
@@ -259,8 +254,8 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.getScreenshotMessage(dependencyStatus)
-                visible: DependencyUtils.getScreenshotMessage(dependencyStatus).length > 0
+                text: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage)
+                visible: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage).length > 0
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.warning
@@ -268,7 +263,7 @@ PluginSettings {
 
             DankButton {
                 width: parent.width
-                text: dependencyStatus.loading ? "Checking..." : "Refresh Diagnostics"
+                text: dependencyStatus.loading ? I18n.t(root.uiLanguage, "checkingShort") : I18n.t(root.uiLanguage, "refreshDiagnostics")
                 iconName: dependencyStatus.loading ? "hourglass_top" : "refresh"
                 enabled: !dependencyStatus.loading
                 onClicked: root.refreshDependencyStatus()
@@ -291,7 +286,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Behavior"
+                text: I18n.t(root.uiLanguage, "behavior")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.DemiBold
                 color: Theme.surfaceText
@@ -299,20 +294,20 @@ PluginSettings {
 
             DankDropdown {
                 width: parent.width
-                text: "Auto-copy translated text"
-                description: "Choose whether successful translations are copied to the clipboard automatically."
-                options: ["Off", "On"]
-                currentValue: root.loadValue("autoCopyResult", false) ? "On" : "Off"
-                onValueChanged: root.saveValue("autoCopyResult", value === "On")
+                text: I18n.t(root.uiLanguage, "autoCopyTranslatedText")
+                description: I18n.t(root.uiLanguage, "autoCopyTranslatedTextDescription")
+                options: I18n.toggleOptions(root.uiLanguage, false)
+                currentValue: I18n.toggleLabel(root.uiLanguage, root.loadValue("autoCopyResult", false))
+                onValueChanged: root.saveValue("autoCopyResult", I18n.isEnabledLabel(root.uiLanguage, value))
             }
 
             DankDropdown {
                 width: parent.width
-                text: "Remember last input"
-                description: "Persist the last typed text between shell restarts."
-                options: ["On", "Off"]
-                currentValue: root.loadValue("rememberLastInput", true) ? "On" : "Off"
-                onValueChanged: root.saveValue("rememberLastInput", value === "On")
+                text: I18n.t(root.uiLanguage, "rememberLastInput")
+                description: I18n.t(root.uiLanguage, "rememberLastInputDescription")
+                options: I18n.toggleOptions(root.uiLanguage, true)
+                currentValue: I18n.toggleLabel(root.uiLanguage, root.loadValue("rememberLastInput", true))
+                onValueChanged: root.saveValue("rememberLastInput", I18n.isEnabledLabel(root.uiLanguage, value))
             }
         }
     }
@@ -332,7 +327,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Suggested IPC keybind commands"
+                text: I18n.t(root.uiLanguage, "suggestedIpcCommands")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.DemiBold
                 color: Theme.surfaceText
@@ -340,7 +335,9 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Open or close the translator popout:\ndms ipc call widget toggle dankTranslate"
+                text: I18n.t(root.uiLanguage, "openOrCloseTranslator", {
+                    "command": "dms ipc call widget toggle dankTranslate"
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
@@ -348,7 +345,9 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Start screenshot OCR translation:\ndms ipc call widget openWith dankTranslate screenshot"
+                text: I18n.t(root.uiLanguage, "startScreenshotTranslation", {
+                    "command": "dms ipc call widget openWith dankTranslate screenshot"
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
@@ -356,7 +355,9 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: "Open the quick actions panel:\ndms ipc call widget openWith dankTranslate actions"
+                text: I18n.t(root.uiLanguage, "openQuickActionsPanel", {
+                    "command": "dms ipc call widget openWith dankTranslate actions"
+                })
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
