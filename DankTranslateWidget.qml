@@ -141,12 +141,24 @@ PluginComponent {
         }
     }
 
+    function deferVisibleViewChange(viewName) {
+        Qt.callLater(() => {
+            const livePopout = findPluginPopout();
+            if (livePopout && livePopout.shouldBeVisible) {
+                currentView = viewName;
+            }
+        });
+    }
+
     function openView(viewName) {
-        currentView = viewName;
         const popout = findPluginPopout();
         if (popout && popout.shouldBeVisible) {
+            if (currentView !== viewName) {
+                deferVisibleViewChange(viewName);
+            }
             return;
         }
+        currentView = viewName;
         withDefaultPopout(() => root.triggerPopout());
     }
 
@@ -156,10 +168,11 @@ PluginComponent {
             popout.close();
             return;
         }
-        currentView = viewName;
         if (popout && popout.shouldBeVisible) {
+            deferVisibleViewChange(viewName);
             return;
         }
+        currentView = viewName;
         withDefaultPopout(() => root.triggerPopout());
     }
 
