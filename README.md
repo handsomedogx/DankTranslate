@@ -75,3 +75,7 @@ binds {
 - `DankTranslateWidget.qml`: bar widget, popout, and IPC entry points
 - `DankTranslateSettings.qml`: plugin settings page
 - `scripts/translate_helper.py`: screenshot OCR and translation helper
+
+## License
+
+MIT. See [`LICENSE`](./LICENSE).
