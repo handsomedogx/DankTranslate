@@ -39,6 +39,7 @@ PluginComponent {
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string targetName: I18n.languageName(uiLanguage, targetLang)
+    readonly property string backendDisplayText: I18n.backendDisplayText(uiLanguage, translationBackend, openaiModel)
     readonly property real availableScreenHeight: root.parentScreen?.height ?? Screen.height
     readonly property real maxTranslateViewHeight: Math.max(260, Math.min(680, availableScreenHeight - 180))
     readonly property real maxInputViewportHeight: 220
@@ -831,6 +832,27 @@ PluginComponent {
                                         color: root.dependencyBannerText.length > 0 ? Theme.warning : Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeSmall
                             }
+                        }
+                    }
+
+                    StyledRect {
+                        width: parent.width
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceContainerHigh
+                        border.color: Theme.outlineMedium
+                        border.width: 1
+                        implicitHeight: backendIndicatorText.implicitHeight + Theme.spacingM * 2
+
+                        StyledText {
+                            id: backendIndicatorText
+
+                            width: parent.width - Theme.spacingM * 2
+                            x: Theme.spacingM
+                            y: Theme.spacingM
+                            text: root.backendDisplayText
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
                         }
                     }
 
