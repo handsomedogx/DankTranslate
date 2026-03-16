@@ -35,6 +35,7 @@ PluginComponent {
     property bool busy: false
     property var dependencyStatus: DependencyUtils.defaultStatus()
     property var livePopout: null
+    property string lastDependencyProbeOcrLanguages: ""
 
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
@@ -328,7 +329,13 @@ PluginComponent {
         busyLabel = "";
     }
 
-    function refreshDependencyStatus() {
+    function refreshDependencyStatus(force) {
+        if (!force && ocrLanguages === lastDependencyProbeOcrLanguages
+            && (dependencyStatus.loading || dependencyStatus.checked)) {
+            return;
+        }
+
+        lastDependencyProbeOcrLanguages = ocrLanguages;
         dependencyStatus = DependencyUtils.loadingStatus();
 
         Proc.runCommand(
@@ -696,7 +703,7 @@ PluginComponent {
                                     : I18n.t(root.uiLanguage, "refreshDependencyCheck")
                                 iconName: root.dependencyStatus.loading ? "hourglass_top" : "refresh"
                                 enabled: !root.dependencyStatus.loading
-                                onClicked: root.refreshDependencyStatus()
+                                onClicked: root.refreshDependencyStatus(true)
                             }
                         }
                     }

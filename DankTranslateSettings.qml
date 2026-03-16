@@ -23,6 +23,7 @@ PluginSettings {
     property string backendTestResult: ""
     property string backendTestInput: I18n.defaultBackendTestText(uiLanguage)
     property bool settingsSyncScheduled: false
+    property string lastDependencyProbeOcrLanguages: ""
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
@@ -150,12 +151,19 @@ PluginSettings {
         );
     }
 
-    function refreshDependencyStatus() {
+    function refreshDependencyStatus(force) {
+        const requestedOcrLanguages = root.loadValue("ocrLanguages", "eng+chi_sim");
+        if (!force && requestedOcrLanguages === lastDependencyProbeOcrLanguages
+            && (dependencyStatus.loading || dependencyStatus.checked)) {
+            return;
+        }
+
+        lastDependencyProbeOcrLanguages = requestedOcrLanguages;
         dependencyStatus = DependencyUtils.loadingStatus();
 
         Proc.runCommand(
             "dankTranslate.settings.dependencies",
-            DependencyUtils.probeCommand(dependencyScriptPath, root.loadValue("ocrLanguages", "eng+chi_sim")),
+            DependencyUtils.probeCommand(dependencyScriptPath, requestedOcrLanguages),
             (stdout, exitCode) => {
                 dependencyStatus = DependencyUtils.finalizeProbeStatus(stdout, exitCode, uiLanguage, I18n);
             },
@@ -731,7 +739,7 @@ PluginSettings {
                 text: dependencyStatus.loading ? I18n.t(root.uiLanguage, "checkingShort") : I18n.t(root.uiLanguage, "refreshDiagnostics")
                 iconName: dependencyStatus.loading ? "hourglass_top" : "refresh"
                 enabled: !dependencyStatus.loading
-                onClicked: root.refreshDependencyStatus()
+                onClicked: root.refreshDependencyStatus(true)
             }
         }
     }
