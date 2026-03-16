@@ -97,6 +97,13 @@ PluginComponent {
         return String(value).trim();
     }
 
+    function pluginSettingValue(key, fallback) {
+        if (pluginData && pluginData[key] !== undefined && pluginData[key] !== null) {
+            return pluginData[key];
+        }
+        return fallback;
+    }
+
     function detectedSourceDisplayText() {
         const normalized = normalizeSettingText(lastDetectedSource).toLowerCase();
         if (normalized === "en" || normalized.indexOf("en-") === 0) {
@@ -132,17 +139,17 @@ PluginComponent {
     }
 
     function syncSettings() {
-        targetLang = pluginData.targetLang || "auto";
-        screenshotMode = pluginData.screenshotMode || "region";
-        ocrLanguages = pluginData.ocrLanguages || "eng+chi_sim";
-        autoCopyResult = pluginData.autoCopyResult ?? false;
-        rememberLastInput = pluginData.rememberLastInput ?? true;
-        translationBackend = pluginData.translationBackend || "google";
-        openaiBaseUrl = normalizeSettingText(pluginData.openaiBaseUrl || "");
-        openaiModel = normalizeSettingText(pluginData.openaiModel || "");
-        openaiApiKey = normalizeSettingText(pluginData.openaiApiKey || "");
-        openaiSystemPrompt = pluginData.openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt();
-        openaiUserPrompt = pluginData.openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate();
+        targetLang = pluginSettingValue("targetLang", targetLang || "auto");
+        screenshotMode = pluginSettingValue("screenshotMode", screenshotMode || "region");
+        ocrLanguages = pluginSettingValue("ocrLanguages", ocrLanguages || "eng+chi_sim");
+        autoCopyResult = pluginSettingValue("autoCopyResult", autoCopyResult);
+        rememberLastInput = pluginSettingValue("rememberLastInput", rememberLastInput);
+        translationBackend = pluginSettingValue("translationBackend", translationBackend || "google");
+        openaiBaseUrl = normalizeSettingText(pluginSettingValue("openaiBaseUrl", openaiBaseUrl));
+        openaiModel = normalizeSettingText(pluginSettingValue("openaiModel", openaiModel));
+        openaiApiKey = normalizeSettingText(pluginSettingValue("openaiApiKey", openaiApiKey));
+        openaiSystemPrompt = pluginSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
+        openaiUserPrompt = pluginSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
         refreshDependencyStatus();
     }
 
@@ -547,10 +554,17 @@ PluginComponent {
     Component.onCompleted: {
         syncSettings();
         restoreState();
+        Qt.callLater(() => syncSettings());
     }
 
-    onPluginServiceChanged: restoreState()
-    onPluginIdChanged: restoreState()
+    onPluginServiceChanged: {
+        syncSettings();
+        restoreState();
+    }
+    onPluginIdChanged: {
+        syncSettings();
+        restoreState();
+    }
     onPluginDataChanged: syncSettings()
 
     IpcHandler {
