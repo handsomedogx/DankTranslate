@@ -104,6 +104,13 @@ PluginComponent {
         return fallback;
     }
 
+    function loadSettingValue(key, fallback) {
+        if (pluginService && pluginId && pluginService.loadPluginData) {
+            return pluginService.loadPluginData(pluginId, key, fallback);
+        }
+        return pluginSettingValue(key, fallback);
+    }
+
     function detectedSourceDisplayText() {
         const normalized = normalizeSettingText(lastDetectedSource).toLowerCase();
         if (normalized === "en" || normalized.indexOf("en-") === 0) {
@@ -139,17 +146,17 @@ PluginComponent {
     }
 
     function syncSettings() {
-        targetLang = pluginSettingValue("targetLang", targetLang || "auto");
-        screenshotMode = pluginSettingValue("screenshotMode", screenshotMode || "region");
-        ocrLanguages = pluginSettingValue("ocrLanguages", ocrLanguages || "eng+chi_sim");
-        autoCopyResult = pluginSettingValue("autoCopyResult", autoCopyResult);
-        rememberLastInput = pluginSettingValue("rememberLastInput", rememberLastInput);
-        translationBackend = pluginSettingValue("translationBackend", translationBackend || "google");
-        openaiBaseUrl = normalizeSettingText(pluginSettingValue("openaiBaseUrl", openaiBaseUrl));
-        openaiModel = normalizeSettingText(pluginSettingValue("openaiModel", openaiModel));
-        openaiApiKey = normalizeSettingText(pluginSettingValue("openaiApiKey", openaiApiKey));
-        openaiSystemPrompt = pluginSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
-        openaiUserPrompt = pluginSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
+        targetLang = loadSettingValue("targetLang", targetLang || "auto");
+        screenshotMode = loadSettingValue("screenshotMode", screenshotMode || "region");
+        ocrLanguages = loadSettingValue("ocrLanguages", ocrLanguages || "eng+chi_sim");
+        autoCopyResult = loadSettingValue("autoCopyResult", autoCopyResult);
+        rememberLastInput = loadSettingValue("rememberLastInput", rememberLastInput);
+        translationBackend = loadSettingValue("translationBackend", translationBackend || "google");
+        openaiBaseUrl = normalizeSettingText(loadSettingValue("openaiBaseUrl", openaiBaseUrl));
+        openaiModel = normalizeSettingText(loadSettingValue("openaiModel", openaiModel));
+        openaiApiKey = normalizeSettingText(loadSettingValue("openaiApiKey", openaiApiKey));
+        openaiSystemPrompt = loadSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
+        openaiUserPrompt = loadSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
         refreshDependencyStatus();
     }
 
