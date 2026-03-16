@@ -112,7 +112,7 @@ def translate_text_with_google(text, source, target, timeout):
     })
     request = urllib.request.Request(
         GOOGLE_TRANSLATE_URL + "?" + query,
-        headers={"User-Agent": "DankTranslate/0.2"},
+        headers={"User-Agent": "DankTranslate/0.3"},
     )
     payload = read_json_response(request, timeout)
 
@@ -216,7 +216,7 @@ def translate_text_with_openai(
     }
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "DankTranslate/0.2",
+        "User-Agent": "DankTranslate/0.3",
     }
     normalized_api_key = (api_key or "").strip()
     if normalized_api_key:
