@@ -15,6 +15,7 @@
 - Translation direction can be `Auto`, `中文`, or `English`
 - Translation backend can be `Google Translate` or an `OpenAI-compatible` API
 - Settings page includes a backend test button for validating the active backend configuration
+- OpenAI-compatible backends support custom system prompts and user prompt templates
 - Keyboard-accessible IPC targets:
   - `widget toggle dankTranslate`
   - `widget openWith dankTranslate screenshot`
@@ -39,7 +40,7 @@ The helper script supports:
 - the Google Translate web endpoint through Python's standard library
 - OpenAI-compatible `POST /v1/chat/completions` backends, including local model servers
 
-For the OpenAI-compatible backend, configure the base URL, model name, and optional API key from the plugin settings page, then use the built-in test button to validate the setup.
+For the OpenAI-compatible backend, configure the base URL, model name, optional API key, and custom prompts from the plugin settings page, then use the built-in test button to validate the setup.
 
 ## Install
 

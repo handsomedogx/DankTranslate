@@ -14,6 +14,8 @@ PluginSettings {
     property string openaiBaseUrl: ""
     property string openaiModel: ""
     property string openaiApiKey: ""
+    property string openaiSystemPrompt: I18n.defaultOpenaiSystemPrompt()
+    property string openaiUserPrompt: I18n.defaultOpenaiUserPromptTemplate()
     property bool backendTestRunning: false
     property bool backendTestOk: false
     property string backendTestStatus: ""
@@ -62,6 +64,8 @@ PluginSettings {
         openaiBaseUrl = normalizeText(root.loadValue("openaiBaseUrl", ""));
         openaiModel = normalizeText(root.loadValue("openaiModel", ""));
         openaiApiKey = normalizeText(root.loadValue("openaiApiKey", ""));
+        openaiSystemPrompt = root.loadValue("openaiSystemPrompt", I18n.defaultOpenaiSystemPrompt());
+        openaiUserPrompt = root.loadValue("openaiUserPrompt", I18n.defaultOpenaiUserPromptTemplate());
     }
 
     function buildBackendArgs() {
@@ -83,8 +87,21 @@ PluginSettings {
         if (apiKey.length > 0) {
             args.push("--openai-api-key", apiKey);
         }
+        if (openaiSystemPrompt.length > 0) {
+            args.push("--openai-system-prompt", openaiSystemPrompt);
+        }
+        if (openaiUserPrompt.length > 0) {
+            args.push("--openai-user-prompt", openaiUserPrompt);
+        }
 
         return args;
+    }
+
+    function resetOpenaiPrompts() {
+        openaiSystemPrompt = I18n.defaultOpenaiSystemPrompt();
+        openaiUserPrompt = I18n.defaultOpenaiUserPromptTemplate();
+        root.saveValue("openaiSystemPrompt", openaiSystemPrompt);
+        root.saveValue("openaiUserPrompt", openaiUserPrompt);
     }
 
     function runBackendTest() {
@@ -329,6 +346,145 @@ PluginSettings {
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                     wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiPromptSettings")
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiPromptDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledRect {
+                    width: parent.width
+                    radius: Theme.cornerRadius
+                    color: Theme.surfaceContainerHigh
+                    border.color: openaiSystemPromptEditor.activeFocus ? Theme.primary : Theme.outlineMedium
+                    border.width: openaiSystemPromptEditor.activeFocus ? 2 : 1
+                    implicitHeight: Math.max(120, openaiSystemPromptEditor.contentHeight + Theme.spacingM * 2)
+                    clip: true
+
+                    TextEdit {
+                        id: openaiSystemPromptEditor
+
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        text: root.openaiSystemPrompt
+                        wrapMode: TextEdit.Wrap
+                        color: Theme.surfaceText
+                        font.pixelSize: Theme.fontSizeSmall
+                        selectByMouse: true
+                        persistentSelection: true
+
+                        onTextChanged: root.openaiSystemPrompt = text
+                        onActiveFocusChanged: {
+                            if (!activeFocus) {
+                                root.saveValue("openaiSystemPrompt", text);
+                            }
+                        }
+                    }
+
+                    Connections {
+                        target: root
+
+                        function onOpenaiSystemPromptChanged() {
+                            if (openaiSystemPromptEditor.text !== root.openaiSystemPrompt) {
+                                openaiSystemPromptEditor.text = root.openaiSystemPrompt;
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        text: I18n.t(root.uiLanguage, "openaiSystemPrompt")
+                        color: Theme.surfaceVariantText
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                        visible: openaiSystemPromptEditor.text.length === 0 && !openaiSystemPromptEditor.activeFocus
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiSystemPromptDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledRect {
+                    width: parent.width
+                    radius: Theme.cornerRadius
+                    color: Theme.surfaceContainerHigh
+                    border.color: openaiUserPromptEditor.activeFocus ? Theme.primary : Theme.outlineMedium
+                    border.width: openaiUserPromptEditor.activeFocus ? 2 : 1
+                    implicitHeight: Math.max(140, openaiUserPromptEditor.contentHeight + Theme.spacingM * 2)
+                    clip: true
+
+                    TextEdit {
+                        id: openaiUserPromptEditor
+
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        text: root.openaiUserPrompt
+                        wrapMode: TextEdit.Wrap
+                        color: Theme.surfaceText
+                        font.pixelSize: Theme.fontSizeSmall
+                        selectByMouse: true
+                        persistentSelection: true
+
+                        onTextChanged: root.openaiUserPrompt = text
+                        onActiveFocusChanged: {
+                            if (!activeFocus) {
+                                root.saveValue("openaiUserPrompt", text);
+                            }
+                        }
+                    }
+
+                    Connections {
+                        target: root
+
+                        function onOpenaiUserPromptChanged() {
+                            if (openaiUserPromptEditor.text !== root.openaiUserPrompt) {
+                                openaiUserPromptEditor.text = root.openaiUserPrompt;
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        text: I18n.t(root.uiLanguage, "openaiUserPrompt")
+                        color: Theme.surfaceVariantText
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                        visible: openaiUserPromptEditor.text.length === 0 && !openaiUserPromptEditor.activeFocus
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiUserPromptDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                DankButton {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "resetPromptDefaults")
+                    iconName: "refresh"
+                    onClicked: root.resetOpenaiPrompts()
                 }
 
                 StyledText {

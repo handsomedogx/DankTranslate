@@ -28,6 +28,13 @@ const STRINGS = {
         "openaiModelDescription": "The model name sent to the OpenAI-compatible API.",
         "openaiApiKey": "API key",
         "openaiApiKeyDescription": "Optional for local servers that do not require authentication.",
+        "openaiPromptSettings": "Prompt settings",
+        "openaiPromptDescription": "Customize the OpenAI-compatible prompts used for translation requests.",
+        "openaiSystemPrompt": "System prompt",
+        "openaiSystemPromptDescription": "Sets the assistant role for the model. Use the recommended default unless you need stricter behavior.",
+        "openaiUserPrompt": "User prompt template",
+        "openaiUserPromptDescription": "Template for each translation request. Available placeholders: {sourceLanguage}, {targetLanguage}, {text}.",
+        "resetPromptDefaults": "Reset Prompt Defaults",
         "backendBaseUrlShort": "base URL",
         "backendModelShort": "model",
         "openaiConfigMissing": "OpenAI-compatible backend requires: {items}.",
@@ -137,6 +144,13 @@ const STRINGS = {
         "openaiModelDescription": "发送给 OpenAI 协议接口的模型名称。",
         "openaiApiKey": "API Key",
         "openaiApiKeyDescription": "对于不需要鉴权的本地服务，这一项可以留空。",
+        "openaiPromptSettings": "提示词设置",
+        "openaiPromptDescription": "自定义发送给 OpenAI 协议模型的提示词。",
+        "openaiSystemPrompt": "系统提示词",
+        "openaiSystemPromptDescription": "用于设置模型的角色约束。除非你明确知道要改什么，否则建议保留默认值。",
+        "openaiUserPrompt": "用户提示词模板",
+        "openaiUserPromptDescription": "每次翻译请求使用的模板。可用占位符：{sourceLanguage}、{targetLanguage}、{text}。",
+        "resetPromptDefaults": "恢复默认提示词",
         "backendBaseUrlShort": "基础地址",
         "backendModelShort": "模型",
         "openaiConfigMissing": "OpenAI 协议后端需要填写：{items}。",
@@ -300,6 +314,14 @@ function backendValue(uiLanguage, label) {
 
 function defaultBackendTestText(uiLanguage) {
     return t(uiLanguage, "backendTestDefaultText");
+}
+
+function defaultOpenaiSystemPrompt() {
+    return "You are a translation engine. Translate the user's text accurately into the requested target language. Preserve line breaks, punctuation, and formatting. Return only the translated text without explanations or quotes.";
+}
+
+function defaultOpenaiUserPromptTemplate() {
+    return "Translate the following text from {sourceLanguage} to {targetLanguage}. Preserve line breaks, punctuation, and formatting. Return only the translation.\n\n{text}";
 }
 
 function directionLabel(uiLanguage, value) {

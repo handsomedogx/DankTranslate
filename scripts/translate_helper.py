@@ -18,6 +18,10 @@ DEFAULT_OPENAI_SYSTEM_PROMPT = (
     "target language. Preserve line breaks, punctuation, and formatting. Return only the "
     "translated text without explanations or quotes."
 )
+DEFAULT_OPENAI_USER_PROMPT_TEMPLATE = (
+    "Translate the following text from {sourceLanguage} to {targetLanguage}. Preserve line "
+    "breaks, punctuation, and formatting. Return only the translation.\n\n{text}"
+)
 HAN_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 LATIN_PATTERN = re.compile(r"[A-Za-z]")
 CANCELLED_PATTERN = re.compile(r"\b(cancelled|canceled|cancel|aborted)\b", re.IGNORECASE)
@@ -141,22 +145,27 @@ def normalize_openai_chat_url(base_url):
 
 
 def build_openai_prompt(text, source, target):
-    target_name = language_name(target)
-    if source == "auto":
-        instruction = (
-            f"Translate the following text into {target_name}. "
-            "Detect the source language automatically."
-        )
-    else:
-        instruction = (
-            f"Translate the following text from {language_name(source)} to {target_name}."
-        )
+    template = DEFAULT_OPENAI_USER_PROMPT_TEMPLATE
+    return apply_prompt_template(template, text, source, target)
 
-    return (
-        instruction
-        + " Preserve line breaks, punctuation, and formatting. Return only the translation.\n\n"
-        + text
-    )
+
+def apply_prompt_template(template, text, source, target):
+    source_name = language_name(infer_source_language(text, source) or source or "auto")
+    target_name = language_name(target)
+    values = {
+        "{sourceLanguage}": source_name,
+        "{source_language}": source_name,
+        "{source}": source_name,
+        "{targetLanguage}": target_name,
+        "{target_language}": target_name,
+        "{target}": target_name,
+        "{text}": text,
+    }
+
+    rendered = template
+    for placeholder, value in values.items():
+        rendered = rendered.replace(placeholder, value)
+    return rendered
 
 
 def extract_content_text(content):
@@ -178,16 +187,29 @@ def extract_content_text(content):
     return ""
 
 
-def translate_text_with_openai(text, source, target, timeout, base_url, api_key, model):
+def translate_text_with_openai(
+    text,
+    source,
+    target,
+    timeout,
+    base_url,
+    api_key,
+    model,
+    system_prompt,
+    user_prompt_template,
+):
     normalized_model = (model or "").strip()
     if not normalized_model:
         raise RuntimeError("OpenAI-compatible backend requires a model name.")
 
+    normalized_system_prompt = (system_prompt or "").strip() or DEFAULT_OPENAI_SYSTEM_PROMPT
+    normalized_user_prompt_template = (user_prompt_template or "").strip() or DEFAULT_OPENAI_USER_PROMPT_TEMPLATE
+
     request_body = {
         "model": normalized_model,
         "messages": [
-            {"role": "system", "content": DEFAULT_OPENAI_SYSTEM_PROMPT},
-            {"role": "user", "content": build_openai_prompt(text, source, target)},
+            {"role": "system", "content": normalized_system_prompt},
+            {"role": "user", "content": apply_prompt_template(normalized_user_prompt_template, text, source, target)},
         ],
         "temperature": 0.2,
         "stream": False,
@@ -229,11 +251,32 @@ def translate_text_with_openai(text, source, target, timeout, base_url, api_key,
     }
 
 
-def translate_text(text, source, target, timeout, backend, openai_base_url, openai_api_key, openai_model):
+def translate_text(
+    text,
+    source,
+    target,
+    timeout,
+    backend,
+    openai_base_url,
+    openai_api_key,
+    openai_model,
+    openai_system_prompt,
+    openai_user_prompt,
+):
     if backend == "google":
         return translate_text_with_google(text, source, target, timeout)
     if backend == "openai":
-        return translate_text_with_openai(text, source, target, timeout, openai_base_url, openai_api_key, openai_model)
+        return translate_text_with_openai(
+            text,
+            source,
+            target,
+            timeout,
+            openai_base_url,
+            openai_api_key,
+            openai_model,
+            openai_system_prompt,
+            openai_user_prompt,
+        )
     raise RuntimeError(f"Unsupported translation backend: {backend}")
 
 
@@ -308,6 +351,8 @@ def handle_translate(args):
         args.openai_base_url,
         args.openai_api_key,
         args.openai_model,
+        args.openai_system_prompt,
+        args.openai_user_prompt,
     )
     return build_translation_payload("translate", text, target, translated)
 
@@ -327,6 +372,8 @@ def handle_test_backend(args):
         args.openai_base_url,
         args.openai_api_key,
         args.openai_model,
+        args.openai_system_prompt,
+        args.openai_user_prompt,
     )
     payload = build_translation_payload("test-backend", text, target, translated)
     payload["backend"] = args.backend
@@ -359,6 +406,8 @@ def handle_screenshot(args):
             args.openai_base_url,
             args.openai_api_key,
             args.openai_model,
+            args.openai_system_prompt,
+            args.openai_user_prompt,
         )
         payload = build_translation_payload("screenshot", ocr_text, target, translated)
         payload["capture_mode"] = args.mode
@@ -391,6 +440,16 @@ def add_backend_arguments(parser):
         "--openai-model",
         default="",
         help="Model name used for the OpenAI-compatible API.",
+    )
+    parser.add_argument(
+        "--openai-system-prompt",
+        default="",
+        help="Optional custom system prompt for the OpenAI-compatible API.",
+    )
+    parser.add_argument(
+        "--openai-user-prompt",
+        default="",
+        help="Optional custom user prompt template for the OpenAI-compatible API.",
     )
 
 

@@ -22,6 +22,8 @@ PluginComponent {
     property string openaiBaseUrl: ""
     property string openaiModel: ""
     property string openaiApiKey: ""
+    property string openaiSystemPrompt: I18n.defaultOpenaiSystemPrompt()
+    property string openaiUserPrompt: I18n.defaultOpenaiUserPromptTemplate()
     property string currentView: "translate"
     property string inputText: ""
     property string translatedText: ""
@@ -105,6 +107,8 @@ PluginComponent {
         openaiBaseUrl = normalizeSettingText(pluginData.openaiBaseUrl || "");
         openaiModel = normalizeSettingText(pluginData.openaiModel || "");
         openaiApiKey = normalizeSettingText(pluginData.openaiApiKey || "");
+        openaiSystemPrompt = pluginData.openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt();
+        openaiUserPrompt = pluginData.openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate();
         refreshDependencyStatus();
     }
 
@@ -177,6 +181,12 @@ PluginComponent {
         }
         if (apiKey.length > 0) {
             args.push("--openai-api-key", apiKey);
+        }
+        if (openaiSystemPrompt.length > 0) {
+            args.push("--openai-system-prompt", openaiSystemPrompt);
+        }
+        if (openaiUserPrompt.length > 0) {
+            args.push("--openai-user-prompt", openaiUserPrompt);
         }
 
         return args;
