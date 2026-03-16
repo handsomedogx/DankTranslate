@@ -10,8 +10,37 @@ PluginSettings {
     pluginId: "dankTranslate"
 
     property var dependencyStatus: DependencyUtils.defaultStatus()
+    property string translationBackend: "google"
+    property string openaiBaseUrl: ""
+    property string openaiModel: ""
+    property string openaiApiKey: ""
+    property bool backendTestRunning: false
+    property bool backendTestOk: false
+    property string backendTestStatus: ""
+    property string backendTestResult: ""
+    property string backendTestInput: I18n.defaultBackendTestText(uiLanguage)
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
+    readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
+    readonly property string backendConfigurationMessage: {
+        if (translationBackend !== "openai") {
+            return "";
+        }
+
+        const missing = [];
+        if (normalizeText(openaiBaseUrl).length === 0) {
+            missing.push(I18n.t(uiLanguage, "backendBaseUrlShort"));
+        }
+        if (normalizeText(openaiModel).length === 0) {
+            missing.push(I18n.t(uiLanguage, "backendModelShort"));
+        }
+        if (missing.length === 0) {
+            return "";
+        }
+        return I18n.t(uiLanguage, "openaiConfigMissing", {
+            "items": I18n.joinList(uiLanguage, missing)
+        });
+    }
 
     function resolveFilePath(relativePath) {
         const resolved = Qt.resolvedUrl(relativePath).toString();
@@ -19,6 +48,114 @@ PluginSettings {
             return decodeURIComponent(resolved.slice(7));
         }
         return resolved;
+    }
+
+    function normalizeText(value) {
+        if (value === undefined || value === null) {
+            return "";
+        }
+        return String(value).trim();
+    }
+
+    function syncStoredSettings() {
+        translationBackend = root.loadValue("translationBackend", "google") || "google";
+        openaiBaseUrl = normalizeText(root.loadValue("openaiBaseUrl", ""));
+        openaiModel = normalizeText(root.loadValue("openaiModel", ""));
+        openaiApiKey = normalizeText(root.loadValue("openaiApiKey", ""));
+    }
+
+    function buildBackendArgs() {
+        const args = ["--backend", translationBackend];
+        if (translationBackend !== "openai") {
+            return args;
+        }
+
+        const baseUrl = normalizeText(openaiBaseUrl);
+        const model = normalizeText(openaiModel);
+        const apiKey = normalizeText(openaiApiKey);
+
+        if (baseUrl.length > 0) {
+            args.push("--openai-base-url", baseUrl);
+        }
+        if (model.length > 0) {
+            args.push("--openai-model", model);
+        }
+        if (apiKey.length > 0) {
+            args.push("--openai-api-key", apiKey);
+        }
+
+        return args;
+    }
+
+    function runBackendTest() {
+        const sampleText = normalizeText(backendTestInput);
+        if (sampleText.length === 0) {
+            backendTestOk = false;
+            backendTestStatus = I18n.t(uiLanguage, "backendTestFailed", {
+                "error": I18n.t(uiLanguage, "enterTextBeforeTranslating")
+            });
+            backendTestResult = "";
+            return;
+        }
+        if (backendConfigurationMessage.length > 0) {
+            backendTestOk = false;
+            backendTestStatus = I18n.t(uiLanguage, "backendTestFailed", {
+                "error": backendConfigurationMessage
+            });
+            backendTestResult = "";
+            return;
+        }
+
+        backendTestRunning = true;
+        backendTestOk = false;
+        backendTestStatus = I18n.t(uiLanguage, "testingBackend");
+        backendTestResult = "";
+
+        let command = [
+            "python3",
+            helperScriptPath,
+            "test-backend",
+            "--text",
+            sampleText,
+            "--source",
+            "auto",
+            "--target",
+            root.loadValue("targetLang", "auto")
+        ];
+        command = command.concat(buildBackendArgs());
+
+        Proc.runCommand(
+            "dankTranslate.settings.testBackend",
+            command,
+            (stdout, exitCode) => {
+                const raw = (stdout || "").trim();
+                let payload = null;
+
+                if (raw.length > 0) {
+                    try {
+                        payload = JSON.parse(raw);
+                    } catch (error) {
+                        payload = null;
+                    }
+                }
+
+                backendTestRunning = false;
+
+                if (payload && payload.ok) {
+                    backendTestOk = true;
+                    backendTestStatus = I18n.t(uiLanguage, "backendTestSucceeded");
+                    backendTestResult = payload.translated_text || "";
+                    return;
+                }
+
+                backendTestOk = false;
+                backendTestStatus = I18n.t(uiLanguage, "backendTestFailed", {
+                    "error": payload?.error || (raw.length > 0 ? raw : I18n.t(uiLanguage, "genericRequestFailed"))
+                });
+                backendTestResult = "";
+            },
+            0
+        );
     }
 
     function refreshDependencyStatus() {
@@ -43,12 +180,16 @@ PluginSettings {
         );
     }
 
-    Component.onCompleted: refreshDependencyStatus()
+    Component.onCompleted: {
+        syncStoredSettings();
+        refreshDependencyStatus();
+    }
 
     Connections {
         target: root
 
         function onSettingChanged() {
+            root.syncStoredSettings();
             root.refreshDependencyStatus();
         }
     }
@@ -67,6 +208,193 @@ PluginSettings {
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
+    }
+
+    StyledRect {
+        width: parent.width
+        radius: Theme.cornerRadius
+        color: Theme.surfaceContainerHigh
+        implicitHeight: backendColumn.implicitHeight + Theme.spacingM * 2
+
+        Column {
+            id: backendColumn
+            width: parent.width - Theme.spacingM * 2
+            x: Theme.spacingM
+            y: Theme.spacingM
+            spacing: Theme.spacingM
+
+            StyledText {
+                width: parent.width
+                text: I18n.t(root.uiLanguage, "translationBackend")
+                font.pixelSize: Theme.fontSizeMedium
+                font.weight: Font.DemiBold
+                color: Theme.surfaceText
+            }
+
+            StyledText {
+                width: parent.width
+                text: I18n.t(root.uiLanguage, "translationBackendDescription")
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                wrapMode: Text.WordWrap
+            }
+
+            DankDropdown {
+                width: parent.width
+                text: I18n.t(root.uiLanguage, "translationBackend")
+                description: I18n.t(root.uiLanguage, "translationBackendDescription")
+                options: I18n.backendOptions(root.uiLanguage)
+                currentValue: I18n.backendLabel(root.uiLanguage, root.translationBackend)
+                onValueChanged: {
+                    const backend = I18n.backendValue(root.uiLanguage, value);
+                    root.translationBackend = backend;
+                    root.saveValue("translationBackend", backend);
+                }
+            }
+
+            Column {
+                width: parent.width
+                spacing: Theme.spacingS
+                visible: root.translationBackend === "openai"
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiSettings")
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+
+                DankTextField {
+                    width: parent.width
+                    text: root.openaiBaseUrl
+                    placeholderText: "http://127.0.0.1:8031/v1"
+                    leftIconName: "link"
+                    showClearButton: true
+                    onTextChanged: root.openaiBaseUrl = text
+                    onEditingFinished: {
+                        text = root.normalizeText(text);
+                        root.openaiBaseUrl = text;
+                        root.saveValue("openaiBaseUrl", text);
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiBaseUrlDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                DankTextField {
+                    width: parent.width
+                    text: root.openaiModel
+                    placeholderText: "gpt-4o-mini"
+                    leftIconName: "memory"
+                    showClearButton: true
+                    onTextChanged: root.openaiModel = text
+                    onEditingFinished: {
+                        text = root.normalizeText(text);
+                        root.openaiModel = text;
+                        root.saveValue("openaiModel", text);
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiModelDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                DankTextField {
+                    width: parent.width
+                    text: root.openaiApiKey
+                    placeholderText: "optional"
+                    leftIconName: "key"
+                    showClearButton: true
+                    onTextChanged: root.openaiApiKey = text
+                    onEditingFinished: {
+                        text = root.normalizeText(text);
+                        root.openaiApiKey = text;
+                        root.saveValue("openaiApiKey", text);
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: I18n.t(root.uiLanguage, "openaiApiKeyDescription")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: root.backendConfigurationMessage.length > 0
+                    text: root.backendConfigurationMessage
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.warning
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            StyledText {
+                width: parent.width
+                text: I18n.t(root.uiLanguage, "backendTest")
+                font.pixelSize: Theme.fontSizeMedium
+                font.weight: Font.Medium
+                color: Theme.surfaceText
+            }
+
+            StyledText {
+                width: parent.width
+                text: I18n.t(root.uiLanguage, "backendTestDescription")
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                wrapMode: Text.WordWrap
+            }
+
+            DankTextField {
+                width: parent.width
+                text: root.backendTestInput
+                placeholderText: I18n.defaultBackendTestText(root.uiLanguage)
+                leftIconName: "edit"
+                showClearButton: true
+                onTextChanged: root.backendTestInput = text
+            }
+
+            DankButton {
+                width: parent.width
+                text: root.backendTestRunning ? I18n.t(root.uiLanguage, "testingBackend") : I18n.t(root.uiLanguage, "backendTestButton")
+                iconName: root.backendTestRunning ? "hourglass_top" : "play_arrow"
+                enabled: !root.backendTestRunning && !root.dependencyStatus.loading
+                    && root.dependencyStatus.python3 && root.dependencyStatus.helper
+                    && root.normalizeText(root.backendTestInput).length > 0
+                    && root.backendConfigurationMessage.length === 0
+                onClicked: root.runBackendTest()
+            }
+
+            StyledText {
+                width: parent.width
+                visible: root.backendTestStatus.length > 0
+                text: root.backendTestStatus
+                font.pixelSize: Theme.fontSizeSmall
+                color: root.backendTestOk ? Theme.primary : Theme.warning
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                width: parent.width
+                visible: root.backendTestResult.length > 0
+                text: I18n.t(root.uiLanguage, "backendTestResult") + ": " + root.backendTestResult
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceText
+                wrapMode: Text.WordWrap
+            }
+        }
     }
 
     StyledRect {

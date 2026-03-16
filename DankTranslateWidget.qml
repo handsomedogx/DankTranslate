@@ -18,6 +18,10 @@ PluginComponent {
     property string ocrLanguages: "eng+chi_sim"
     property bool autoCopyResult: false
     property bool rememberLastInput: true
+    property string translationBackend: "google"
+    property string openaiBaseUrl: ""
+    property string openaiModel: ""
+    property string openaiApiKey: ""
     property string currentView: "translate"
     property string inputText: ""
     property string translatedText: ""
@@ -37,8 +41,28 @@ PluginComponent {
     readonly property real maxTranslateViewHeight: Math.max(260, Math.min(680, availableScreenHeight - 180))
     readonly property real maxInputViewportHeight: 220
     readonly property real maxResultViewportHeight: 200
+    readonly property string backendConfigurationMessage: {
+        if (translationBackend !== "openai") {
+            return "";
+        }
+
+        const missing = [];
+        if (normalizeSettingText(openaiBaseUrl).length === 0) {
+            missing.push(I18n.t(uiLanguage, "backendBaseUrlShort"));
+        }
+        if (normalizeSettingText(openaiModel).length === 0) {
+            missing.push(I18n.t(uiLanguage, "backendModelShort"));
+        }
+        if (missing.length === 0) {
+            return "";
+        }
+        return I18n.t(uiLanguage, "openaiConfigMissing", {
+            "items": I18n.joinList(uiLanguage, missing)
+        });
+    }
     readonly property bool canTranslateText: dependencyStatus.checked && !dependencyStatus.loading
-        && dependencyStatus.dms && dependencyStatus.python3 && dependencyStatus.helper && dependencyStatus.probeError.length === 0
+        && dependencyStatus.dms && dependencyStatus.python3 && dependencyStatus.helper
+        && dependencyStatus.probeError.length === 0 && backendConfigurationMessage.length === 0
     readonly property bool canScreenshotTranslate: canTranslateText && dependencyStatus.tesseract
         && dependencyStatus.missingOcrLanguages.length === 0
     readonly property string translateDependencyMessage: DependencyUtils.getTranslateMessage(dependencyStatus, uiLanguage)
@@ -46,6 +70,9 @@ PluginComponent {
     readonly property string dependencyBannerText: {
         if (translateDependencyMessage.length > 0) {
             return translateDependencyMessage;
+        }
+        if (backendConfigurationMessage.length > 0) {
+            return backendConfigurationMessage;
         }
         if (screenshotDependencyMessage.length > 0) {
             return screenshotDependencyMessage;
@@ -61,12 +88,23 @@ PluginComponent {
         return resolved;
     }
 
+    function normalizeSettingText(value) {
+        if (value === undefined || value === null) {
+            return "";
+        }
+        return String(value).trim();
+    }
+
     function syncSettings() {
         targetLang = pluginData.targetLang || "auto";
         screenshotMode = pluginData.screenshotMode || "region";
         ocrLanguages = pluginData.ocrLanguages || "eng+chi_sim";
         autoCopyResult = pluginData.autoCopyResult ?? false;
         rememberLastInput = pluginData.rememberLastInput ?? true;
+        translationBackend = pluginData.translationBackend || "google";
+        openaiBaseUrl = normalizeSettingText(pluginData.openaiBaseUrl || "");
+        openaiModel = normalizeSettingText(pluginData.openaiModel || "");
+        openaiApiKey = normalizeSettingText(pluginData.openaiApiKey || "");
         refreshDependencyStatus();
     }
 
@@ -119,6 +157,29 @@ PluginComponent {
         if (rememberLastInput) {
             saveState("lastInput", inputText);
         }
+    }
+
+    function buildTranslationBackendArgs() {
+        const args = ["--backend", translationBackend];
+        if (translationBackend !== "openai") {
+            return args;
+        }
+
+        const baseUrl = normalizeSettingText(openaiBaseUrl);
+        const model = normalizeSettingText(openaiModel);
+        const apiKey = normalizeSettingText(openaiApiKey);
+
+        if (baseUrl.length > 0) {
+            args.push("--openai-base-url", baseUrl);
+        }
+        if (model.length > 0) {
+            args.push("--openai-model", model);
+        }
+        if (apiKey.length > 0) {
+            args.push("--openai-api-key", apiKey);
+        }
+
+        return args;
     }
 
     function findPluginPopout() {
@@ -343,7 +404,7 @@ PluginComponent {
 
     function translateInput() {
         if (!canTranslateText) {
-            showDependencyProblem(translateDependencyMessage);
+            showDependencyProblem(translateDependencyMessage.length > 0 ? translateDependencyMessage : backendConfigurationMessage);
             return;
         }
 
@@ -357,9 +418,22 @@ PluginComponent {
         persistLiveInput();
         startJob(I18n.t(uiLanguage, "translatingText"));
 
+        let command = [
+            "python3",
+            helperScriptPath,
+            "translate",
+            "--text",
+            trimmed,
+            "--source",
+            "auto",
+            "--target",
+            targetLang
+        ];
+        command = command.concat(buildTranslationBackendArgs());
+
         Proc.runCommand(
             "dankTranslate.translate",
-            ["python3", helperScriptPath, "translate", "--text", trimmed, "--source", "auto", "--target", targetLang],
+            command,
             (stdout, exitCode) => applyResponse(stdout, exitCode),
             0
         );
@@ -367,28 +441,35 @@ PluginComponent {
 
     function screenshotTranslate() {
         if (!canScreenshotTranslate) {
-            showDependencyProblem(screenshotDependencyMessage.length > 0 ? screenshotDependencyMessage : translateDependencyMessage);
+            showDependencyProblem(
+                screenshotDependencyMessage.length > 0
+                    ? screenshotDependencyMessage
+                    : (translateDependencyMessage.length > 0 ? translateDependencyMessage : backendConfigurationMessage)
+            );
             return;
         }
 
         startJob(I18n.t(uiLanguage, "selectScreenshotArea"));
         closePopout();
 
+        let command = [
+            "python3",
+            helperScriptPath,
+            "screenshot",
+            "--source",
+            "auto",
+            "--target",
+            targetLang,
+            "--mode",
+            screenshotMode,
+            "--ocr-languages",
+            ocrLanguages
+        ];
+        command = command.concat(buildTranslationBackendArgs());
+
         Proc.runCommand(
             "dankTranslate.screenshot",
-            [
-                "python3",
-                helperScriptPath,
-                "screenshot",
-                "--source",
-                "auto",
-                "--target",
-                targetLang,
-                "--mode",
-                screenshotMode,
-                "--ocr-languages",
-                ocrLanguages
-            ],
+            command,
             (stdout, exitCode) => applyResponse(stdout, exitCode),
             0
         );

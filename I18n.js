@@ -17,12 +17,35 @@ const STRINGS = {
         "pluginDescription": "A bar translation plugin with popup translation, keyboard-triggered IPC entry points, and screenshot OCR translation.",
         "dependencies": "Dependencies",
         "dependencyIntro": "Required tools: python3, tesseract, and the DMS CLI. For Chinese OCR install the Tesseract language data for chi_sim in addition to eng.",
+        "translationBackend": "Translation backend",
+        "translationBackendDescription": "Choose between the built-in Google Translate web endpoint and an OpenAI-compatible model API.",
+        "backendGoogle": "Google Translate",
+        "backendOpenai": "OpenAI-Compatible Model",
+        "openaiSettings": "OpenAI-compatible backend",
+        "openaiBaseUrl": "Base URL",
+        "openaiBaseUrlDescription": "Host or /v1 endpoint for the model server, for example http://127.0.0.1:8031/v1.",
+        "openaiModel": "Model",
+        "openaiModelDescription": "The model name sent to the OpenAI-compatible API.",
+        "openaiApiKey": "API key",
+        "openaiApiKeyDescription": "Optional for local servers that do not require authentication.",
+        "backendBaseUrlShort": "base URL",
+        "backendModelShort": "model",
+        "openaiConfigMissing": "OpenAI-compatible backend requires: {items}.",
         "translationDirection": "Translation direction",
         "translationDirectionDescription": "Auto translates Chinese to English and English to Chinese. You can still force a fixed target.",
         "screenshotMode": "Screenshot mode",
         "screenshotModeDescription": "The mode used when starting screenshot translation from the icon or IPC shortcut.",
         "ocrLanguages": "OCR languages",
         "ocrLanguagesDescription": "Use Tesseract language codes joined by +, for example eng+chi_sim.",
+        "backendTest": "Backend test",
+        "backendTestDescription": "Run a sample translation with the currently selected backend configuration.",
+        "backendTestInput": "Test text",
+        "backendTestButton": "Test Current Backend",
+        "testingBackend": "Testing backend...",
+        "backendTestSucceeded": "Backend test succeeded.",
+        "backendTestFailed": "Backend test failed: {error}",
+        "backendTestResult": "Test result",
+        "backendTestDefaultText": "Hello from Dank Translate.",
         "diagnostics": "Diagnostics",
         "requestedOcrLanguages": "Requested OCR languages: {value}",
         "missingOcrLanguages": "Missing OCR languages: {value}",
@@ -103,12 +126,35 @@ const STRINGS = {
         "pluginDescription": "一个支持弹窗翻译、IPC 快捷键和截图 OCR 翻译的状态栏插件。",
         "dependencies": "依赖",
         "dependencyIntro": "需要 python3、tesseract 和 DMS CLI。若要识别中文，请额外安装 chi_sim 的 Tesseract 语言包。",
+        "translationBackend": "翻译后端",
+        "translationBackendDescription": "在内置的 Google Translate 网页接口和 OpenAI 协议模型接口之间切换。",
+        "backendGoogle": "谷歌翻译",
+        "backendOpenai": "OpenAI 协议模型",
+        "openaiSettings": "OpenAI 协议后端",
+        "openaiBaseUrl": "基础地址",
+        "openaiBaseUrlDescription": "填写模型服务的主机地址或 /v1 端点，例如 http://127.0.0.1:8031/v1。",
+        "openaiModel": "模型",
+        "openaiModelDescription": "发送给 OpenAI 协议接口的模型名称。",
+        "openaiApiKey": "API Key",
+        "openaiApiKeyDescription": "对于不需要鉴权的本地服务，这一项可以留空。",
+        "backendBaseUrlShort": "基础地址",
+        "backendModelShort": "模型",
+        "openaiConfigMissing": "OpenAI 协议后端需要填写：{items}。",
         "translationDirection": "翻译方向",
         "translationDirectionDescription": "自动模式会将中文翻译成英文，将英文翻译成中文。你也可以固定目标语言。",
         "screenshotMode": "截图模式",
         "screenshotModeDescription": "从图标或 IPC 快捷键启动截图翻译时使用的模式。",
         "ocrLanguages": "OCR 语言",
         "ocrLanguagesDescription": "使用以 + 连接的 Tesseract 语言代码，例如 eng+chi_sim。",
+        "backendTest": "后端测试",
+        "backendTestDescription": "使用当前选择的后端配置发起一次示例翻译。",
+        "backendTestInput": "测试文本",
+        "backendTestButton": "测试当前后端",
+        "testingBackend": "正在测试后端...",
+        "backendTestSucceeded": "后端测试成功。",
+        "backendTestFailed": "后端测试失败：{error}",
+        "backendTestResult": "测试结果",
+        "backendTestDefaultText": "Hello from Dank Translate.",
         "diagnostics": "诊断",
         "requestedOcrLanguages": "请求的 OCR 语言：{value}",
         "missingOcrLanguages": "缺少的 OCR 语言：{value}",
@@ -229,6 +275,31 @@ function directionOptions(uiLanguage) {
         t(uiLanguage, "chinese"),
         t(uiLanguage, "english")
     ];
+}
+
+function backendOptions(uiLanguage) {
+    return [
+        t(uiLanguage, "backendGoogle"),
+        t(uiLanguage, "backendOpenai")
+    ];
+}
+
+function backendLabel(uiLanguage, value) {
+    if (value === "openai") {
+        return t(uiLanguage, "backendOpenai");
+    }
+    return t(uiLanguage, "backendGoogle");
+}
+
+function backendValue(uiLanguage, label) {
+    if (label === t(uiLanguage, "backendOpenai")) {
+        return "openai";
+    }
+    return "google";
+}
+
+function defaultBackendTestText(uiLanguage) {
+    return t(uiLanguage, "backendTestDefaultText");
 }
 
 function directionLabel(uiLanguage, value) {
