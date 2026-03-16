@@ -31,7 +31,11 @@ def emit(payload):
     print(json.dumps(payload, ensure_ascii=False))
 
 
-def clean_text(text):
+def normalize_text_input(text):
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def clean_ocr_text(text):
     lines = [line.strip() for line in text.splitlines()]
     compact = "\n".join(line for line in lines if line)
     compact = re.sub(r"\n{3,}", "\n\n", compact)
@@ -337,9 +341,10 @@ def build_translation_payload(mode, text, target, translated):
 
 
 def handle_translate(args):
-    text = clean_text(args.text)
-    if not text:
+    raw_text = normalize_text_input(args.text)
+    if not raw_text.strip():
         return {"ok": False, "error": "No text was provided for translation."}
+    text = raw_text
 
     target = infer_target_language(text, args.target)
     translated = translate_text(
@@ -358,9 +363,10 @@ def handle_translate(args):
 
 
 def handle_test_backend(args):
-    text = clean_text(args.text)
-    if not text:
+    raw_text = normalize_text_input(args.text)
+    if not raw_text.strip():
         return {"ok": False, "error": "No text was provided for backend testing."}
+    text = raw_text
 
     target = infer_target_language(text, args.target)
     translated = translate_text(
@@ -395,7 +401,7 @@ def handle_screenshot(args):
         image_path = handle.name
 
     try:
-        ocr_text = run_tesseract(image_path, args.ocr_languages)
+        ocr_text = clean_ocr_text(run_tesseract(image_path, args.ocr_languages))
         target = infer_target_language(ocr_text, args.target)
         translated = translate_text(
             ocr_text,
