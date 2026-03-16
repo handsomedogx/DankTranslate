@@ -23,6 +23,12 @@ function defaultStatus() {
     };
 }
 
+function loadingStatus() {
+    const status = defaultStatus();
+    status.loading = true;
+    return status;
+}
+
 function parseCsv(value) {
     if (!value || value.length === 0) {
         return [];
@@ -62,6 +68,21 @@ function parseProbeOutput(raw, uiLanguage) {
     status.probeError = fields.ERROR || "";
 
     return status;
+}
+
+function probeCommand(scriptPath, ocrLanguages) {
+    return ["sh", scriptPath, ocrLanguages];
+}
+
+function finalizeProbeStatus(raw, exitCode, uiLanguage, i18n) {
+    const parsed = parseProbeOutput(raw, uiLanguage);
+    parsed.loading = false;
+    if (exitCode !== 0 && !parsed.probeError) {
+        parsed.probeError = i18n.t(uiLanguage, "dependencyProbeExitCode", {
+            "code": exitCode
+        });
+    }
+    return parsed;
 }
 
 function formatMissingList(values) {

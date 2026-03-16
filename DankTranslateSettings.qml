@@ -1,4 +1,5 @@
 import QtQuick
+import "BackendUtils.js" as BackendUtils
 import "DependencyUtils.js" as DependencyUtils
 import "I18n.js" as I18n
 import qs.Common
@@ -25,25 +26,7 @@ PluginSettings {
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
-    readonly property string backendConfigurationMessage: {
-        if (translationBackend !== "openai") {
-            return "";
-        }
-
-        const missing = [];
-        if (normalizeText(openaiBaseUrl).length === 0) {
-            missing.push(I18n.t(uiLanguage, "backendBaseUrlShort"));
-        }
-        if (normalizeText(openaiModel).length === 0) {
-            missing.push(I18n.t(uiLanguage, "backendModelShort"));
-        }
-        if (missing.length === 0) {
-            return "";
-        }
-        return I18n.t(uiLanguage, "openaiConfigMissing", {
-            "items": I18n.joinList(uiLanguage, missing)
-        });
-    }
+    readonly property string backendConfigurationMessage: BackendUtils.configurationMessage(uiLanguage, root, I18n)
 
     function resolveFilePath(relativePath) {
         const resolved = Qt.resolvedUrl(relativePath).toString();
@@ -53,20 +36,14 @@ PluginSettings {
         return resolved;
     }
 
-    function normalizeText(value) {
-        if (value === undefined || value === null) {
-            return "";
-        }
-        return String(value).trim();
-    }
-
     function syncStoredSettings() {
-        translationBackend = root.loadValue("translationBackend", "google") || "google";
-        openaiBaseUrl = normalizeText(root.loadValue("openaiBaseUrl", ""));
-        openaiModel = normalizeText(root.loadValue("openaiModel", ""));
-        openaiApiKey = normalizeText(root.loadValue("openaiApiKey", ""));
-        openaiSystemPrompt = root.loadValue("openaiSystemPrompt", I18n.defaultOpenaiSystemPrompt());
-        openaiUserPrompt = root.loadValue("openaiUserPrompt", I18n.defaultOpenaiUserPromptTemplate());
+        const stored = BackendUtils.loadSettings((key, fallback) => root.loadValue(key, fallback), I18n);
+        translationBackend = stored.translationBackend;
+        openaiBaseUrl = stored.openaiBaseUrl;
+        openaiModel = stored.openaiModel;
+        openaiApiKey = stored.openaiApiKey;
+        openaiSystemPrompt = stored.openaiSystemPrompt;
+        openaiUserPrompt = stored.openaiUserPrompt;
         syncBackendDropdown();
     }
 
@@ -92,32 +69,7 @@ PluginSettings {
     }
 
     function buildBackendArgs() {
-        const args = ["--backend", translationBackend];
-        if (translationBackend !== "openai") {
-            return args;
-        }
-
-        const baseUrl = normalizeText(openaiBaseUrl);
-        const model = normalizeText(openaiModel);
-        const apiKey = normalizeText(openaiApiKey);
-
-        if (baseUrl.length > 0) {
-            args.push("--openai-base-url", baseUrl);
-        }
-        if (model.length > 0) {
-            args.push("--openai-model", model);
-        }
-        if (apiKey.length > 0) {
-            args.push("--openai-api-key", apiKey);
-        }
-        if (openaiSystemPrompt.length > 0) {
-            args.push("--openai-system-prompt", openaiSystemPrompt);
-        }
-        if (openaiUserPrompt.length > 0) {
-            args.push("--openai-user-prompt", openaiUserPrompt);
-        }
-
-        return args;
+        return BackendUtils.buildArgs(root, I18n);
     }
 
     function resetOpenaiPrompts() {
@@ -128,7 +80,7 @@ PluginSettings {
     }
 
     function runBackendTest() {
-        const sampleText = normalizeText(backendTestInput);
+        const sampleText = BackendUtils.normalizeText(backendTestInput);
         if (sampleText.length === 0) {
             backendTestOk = false;
             backendTestStatus = I18n.t(uiLanguage, "backendTestFailed", {
@@ -199,22 +151,13 @@ PluginSettings {
     }
 
     function refreshDependencyStatus() {
-        const loadingState = DependencyUtils.defaultStatus();
-        loadingState.loading = true;
-        dependencyStatus = loadingState;
+        dependencyStatus = DependencyUtils.loadingStatus();
 
         Proc.runCommand(
             "dankTranslate.settings.dependencies",
-            ["sh", dependencyScriptPath, root.loadValue("ocrLanguages", "eng+chi_sim")],
+            DependencyUtils.probeCommand(dependencyScriptPath, root.loadValue("ocrLanguages", "eng+chi_sim")),
             (stdout, exitCode) => {
-                let parsed = DependencyUtils.parseProbeOutput(stdout, uiLanguage);
-                parsed.loading = false;
-                if (exitCode !== 0 && !parsed.probeError) {
-                    parsed.probeError = I18n.t(uiLanguage, "dependencyProbeExitCode", {
-                        "code": exitCode
-                    });
-                }
-                dependencyStatus = parsed;
+                dependencyStatus = DependencyUtils.finalizeProbeStatus(stdout, exitCode, uiLanguage, I18n);
             },
             0
         );
@@ -328,7 +271,7 @@ PluginSettings {
                     showClearButton: true
                     onTextChanged: root.openaiBaseUrl = text
                     onEditingFinished: {
-                        text = root.normalizeText(text);
+                        text = BackendUtils.normalizeText(text);
                         root.openaiBaseUrl = text;
                         root.saveValue("openaiBaseUrl", text);
                     }
@@ -350,7 +293,7 @@ PluginSettings {
                     showClearButton: true
                     onTextChanged: root.openaiModel = text
                     onEditingFinished: {
-                        text = root.normalizeText(text);
+                        text = BackendUtils.normalizeText(text);
                         root.openaiModel = text;
                         root.saveValue("openaiModel", text);
                     }
@@ -372,7 +315,7 @@ PluginSettings {
                     showClearButton: true
                     onTextChanged: root.openaiApiKey = text
                     onEditingFinished: {
-                        text = root.normalizeText(text);
+                        text = BackendUtils.normalizeText(text);
                         root.openaiApiKey = text;
                         root.saveValue("openaiApiKey", text);
                     }
@@ -566,7 +509,7 @@ PluginSettings {
                 iconName: root.backendTestRunning ? "hourglass_top" : "play_arrow"
                 enabled: !root.backendTestRunning && !root.dependencyStatus.loading
                     && root.dependencyStatus.python3 && root.dependencyStatus.helper
-                    && root.normalizeText(root.backendTestInput).length > 0
+                    && BackendUtils.normalizeText(root.backendTestInput).length > 0
                     && root.backendConfigurationMessage.length === 0
                 onClicked: root.runBackendTest()
             }

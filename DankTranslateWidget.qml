@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "BackendUtils.js" as BackendUtils
 import "DependencyUtils.js" as DependencyUtils
 import "I18n.js" as I18n
 import qs.Common
@@ -43,25 +44,7 @@ PluginComponent {
     readonly property real maxTranslateViewHeight: Math.max(260, Math.min(680, availableScreenHeight - 180))
     readonly property real maxInputViewportHeight: 220
     readonly property real maxResultViewportHeight: 200
-    readonly property string backendConfigurationMessage: {
-        if (currentTranslationBackend() !== "openai") {
-            return "";
-        }
-
-        const missing = [];
-        if (currentOpenaiBaseUrl().length === 0) {
-            missing.push(I18n.t(uiLanguage, "backendBaseUrlShort"));
-        }
-        if (currentOpenaiModel().length === 0) {
-            missing.push(I18n.t(uiLanguage, "backendModelShort"));
-        }
-        if (missing.length === 0) {
-            return "";
-        }
-        return I18n.t(uiLanguage, "openaiConfigMissing", {
-            "items": I18n.joinList(uiLanguage, missing)
-        });
-    }
+    readonly property string backendConfigurationMessage: BackendUtils.configurationMessage(uiLanguage, currentBackendSettings(), I18n)
     readonly property bool canTranslateText: dependencyStatus.checked && !dependencyStatus.loading
         && dependencyStatus.dms && dependencyStatus.python3 && dependencyStatus.helper
         && dependencyStatus.probeError.length === 0 && backendConfigurationMessage.length === 0
@@ -90,13 +73,6 @@ PluginComponent {
         return resolved;
     }
 
-    function normalizeSettingText(value) {
-        if (value === undefined || value === null) {
-            return "";
-        }
-        return String(value).trim();
-    }
-
     function pluginSettingValue(key, fallback) {
         if (pluginData && pluginData[key] !== undefined && pluginData[key] !== null) {
             return pluginData[key];
@@ -111,45 +87,30 @@ PluginComponent {
         return pluginSettingValue(key, fallback);
     }
 
+    function currentBackendSettings() {
+        return BackendUtils.loadSettings((key, fallback) => loadSettingValue(key, fallback), I18n);
+    }
+
     function currentTranslationBackend() {
-        return normalizeSettingText(loadSettingValue("translationBackend", translationBackend || "google")) || "google";
-    }
-
-    function currentOpenaiBaseUrl() {
-        return normalizeSettingText(loadSettingValue("openaiBaseUrl", openaiBaseUrl));
-    }
-
-    function currentOpenaiModel() {
-        return normalizeSettingText(loadSettingValue("openaiModel", openaiModel));
-    }
-
-    function currentOpenaiApiKey() {
-        return normalizeSettingText(loadSettingValue("openaiApiKey", openaiApiKey));
-    }
-
-    function currentOpenaiSystemPrompt() {
-        return loadSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
-    }
-
-    function currentOpenaiUserPrompt() {
-        return loadSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
+        return currentBackendSettings().translationBackend;
     }
 
     function detectedSourceDisplayText() {
-        const normalized = normalizeSettingText(lastDetectedSource).toLowerCase();
+        const normalized = BackendUtils.normalizeText(lastDetectedSource).toLowerCase();
         if (normalized === "en" || normalized.indexOf("en-") === 0) {
             return "English";
         }
         if (normalized === "zh" || normalized === "zh-cn" || normalized.indexOf("zh-") === 0) {
             return "中文";
         }
-        return normalizeSettingText(lastDetectedSource);
+        return BackendUtils.normalizeText(lastDetectedSource);
     }
 
     function backendInlineText() {
-        const activeBackend = currentTranslationBackend();
+        const backendSettings = currentBackendSettings();
+        const activeBackend = backendSettings.translationBackend;
         const backendName = I18n.backendLabel(uiLanguage, activeBackend);
-        const normalizedModel = currentOpenaiModel();
+        const normalizedModel = backendSettings.openaiModel;
         if (activeBackend === "openai" && normalizedModel.length > 0) {
             return backendName + " (" + normalizedModel + ")";
         }
@@ -171,17 +132,18 @@ PluginComponent {
     }
 
     function syncSettings() {
+        const backendSettings = currentBackendSettings();
         targetLang = loadSettingValue("targetLang", targetLang || "auto");
         screenshotMode = loadSettingValue("screenshotMode", screenshotMode || "region");
         ocrLanguages = loadSettingValue("ocrLanguages", ocrLanguages || "eng+chi_sim");
         autoCopyResult = loadSettingValue("autoCopyResult", autoCopyResult);
         rememberLastInput = loadSettingValue("rememberLastInput", rememberLastInput);
-        translationBackend = currentTranslationBackend();
-        openaiBaseUrl = currentOpenaiBaseUrl();
-        openaiModel = currentOpenaiModel();
-        openaiApiKey = currentOpenaiApiKey();
-        openaiSystemPrompt = currentOpenaiSystemPrompt();
-        openaiUserPrompt = currentOpenaiUserPrompt();
+        translationBackend = backendSettings.translationBackend;
+        openaiBaseUrl = backendSettings.openaiBaseUrl;
+        openaiModel = backendSettings.openaiModel;
+        openaiApiKey = backendSettings.openaiApiKey;
+        openaiSystemPrompt = backendSettings.openaiSystemPrompt;
+        openaiUserPrompt = backendSettings.openaiUserPrompt;
         refreshDependencyStatus();
     }
 
@@ -237,35 +199,7 @@ PluginComponent {
     }
 
     function buildTranslationBackendArgs() {
-        const activeBackend = currentTranslationBackend();
-        const args = ["--backend", activeBackend];
-        if (activeBackend !== "openai") {
-            return args;
-        }
-
-        const baseUrl = currentOpenaiBaseUrl();
-        const model = currentOpenaiModel();
-        const apiKey = currentOpenaiApiKey();
-        const systemPrompt = currentOpenaiSystemPrompt();
-        const userPrompt = currentOpenaiUserPrompt();
-
-        if (baseUrl.length > 0) {
-            args.push("--openai-base-url", baseUrl);
-        }
-        if (model.length > 0) {
-            args.push("--openai-model", model);
-        }
-        if (apiKey.length > 0) {
-            args.push("--openai-api-key", apiKey);
-        }
-        if (systemPrompt.length > 0) {
-            args.push("--openai-system-prompt", systemPrompt);
-        }
-        if (userPrompt.length > 0) {
-            args.push("--openai-user-prompt", userPrompt);
-        }
-
-        return args;
+        return BackendUtils.buildArgs(currentBackendSettings(), I18n);
     }
 
     function findPluginPopout() {
@@ -395,22 +329,13 @@ PluginComponent {
     }
 
     function refreshDependencyStatus() {
-        const loadingState = DependencyUtils.defaultStatus();
-        loadingState.loading = true;
-        dependencyStatus = loadingState;
+        dependencyStatus = DependencyUtils.loadingStatus();
 
         Proc.runCommand(
             "dankTranslate.dependencies",
-            ["sh", dependencyScriptPath, ocrLanguages],
+            DependencyUtils.probeCommand(dependencyScriptPath, ocrLanguages),
             (stdout, exitCode) => {
-                let parsed = DependencyUtils.parseProbeOutput(stdout, uiLanguage);
-                parsed.loading = false;
-                if (exitCode !== 0 && !parsed.probeError) {
-                    parsed.probeError = I18n.t(uiLanguage, "dependencyProbeExitCode", {
-                        "code": exitCode
-                    });
-                }
-                dependencyStatus = parsed;
+                dependencyStatus = DependencyUtils.finalizeProbeStatus(stdout, exitCode, uiLanguage, I18n);
             },
             0
         );
