@@ -21,6 +21,7 @@ PluginSettings {
     property string backendTestStatus: ""
     property string backendTestResult: ""
     property string backendTestInput: I18n.defaultBackendTestText(uiLanguage)
+    property bool settingsSyncScheduled: false
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
     readonly property string helperScriptPath: resolveFilePath("./scripts/translate_helper.py")
@@ -66,6 +67,28 @@ PluginSettings {
         openaiApiKey = normalizeText(root.loadValue("openaiApiKey", ""));
         openaiSystemPrompt = root.loadValue("openaiSystemPrompt", I18n.defaultOpenaiSystemPrompt());
         openaiUserPrompt = root.loadValue("openaiUserPrompt", I18n.defaultOpenaiUserPromptTemplate());
+        syncBackendDropdown();
+    }
+
+    function syncBackendDropdown() {
+        if (!backendDropdown) {
+            return;
+        }
+        backendDropdown.currentValue = I18n.backendLabel(uiLanguage, translationBackend);
+    }
+
+    function runScheduledSettingsSync() {
+        settingsSyncScheduled = false;
+        syncStoredSettings();
+        refreshDependencyStatus();
+    }
+
+    function scheduleSettingsSync() {
+        if (settingsSyncScheduled) {
+            return;
+        }
+        settingsSyncScheduled = true;
+        Qt.callLater(runScheduledSettingsSync);
     }
 
     function buildBackendArgs() {
@@ -197,17 +220,30 @@ PluginSettings {
         );
     }
 
-    Component.onCompleted: {
-        syncStoredSettings();
-        refreshDependencyStatus();
-    }
+    Component.onCompleted: root.scheduleSettingsSync()
+
+    onPluginServiceChanged: root.scheduleSettingsSync()
+
+    onPluginIdChanged: root.scheduleSettingsSync()
+
+    onUiLanguageChanged: syncBackendDropdown()
 
     Connections {
         target: root
 
         function onSettingChanged() {
-            root.syncStoredSettings();
-            root.refreshDependencyStatus();
+            root.scheduleSettingsSync();
+        }
+    }
+
+    Connections {
+        target: root.pluginService
+        enabled: root.pluginService !== null
+
+        function onPluginDataChanged(changedPluginId) {
+            if (changedPluginId === root.pluginId) {
+                root.scheduleSettingsSync();
+            }
         }
     }
 
@@ -257,6 +293,8 @@ PluginSettings {
             }
 
             DankDropdown {
+                id: backendDropdown
+
                 width: parent.width
                 text: I18n.t(root.uiLanguage, "translationBackend")
                 description: I18n.t(root.uiLanguage, "translationBackendDescription")
