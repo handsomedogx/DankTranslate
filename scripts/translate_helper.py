@@ -148,11 +148,6 @@ def normalize_openai_chat_url(base_url):
     return normalized + "/v1/chat/completions"
 
 
-def build_openai_prompt(text, source, target):
-    template = DEFAULT_OPENAI_USER_PROMPT_TEMPLATE
-    return apply_prompt_template(template, text, source, target)
-
-
 def apply_prompt_template(template, text, source, target):
     source_name = language_name(infer_source_language(text, source) or source or "auto")
     target_name = language_name(target)

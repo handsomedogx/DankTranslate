@@ -2,7 +2,7 @@
   "id": "dankTranslate",
   "name": "Dank Translate",
   "description": "Translate English and Chinese text from a bar popout or screenshot OCR workflow.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "author": "handsomedogx",
   "icon": "translate",
   "type": "widget",

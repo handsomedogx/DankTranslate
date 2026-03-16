@@ -51,8 +51,8 @@ PluginComponent {
         && dependencyStatus.probeError.length === 0 && backendConfigurationMessage.length === 0
     readonly property bool canScreenshotTranslate: canTranslateText && dependencyStatus.tesseract
         && dependencyStatus.missingOcrLanguages.length === 0
-    readonly property string translateDependencyMessage: DependencyUtils.getTranslateMessage(dependencyStatus, uiLanguage)
-    readonly property string screenshotDependencyMessage: DependencyUtils.getScreenshotMessage(dependencyStatus, uiLanguage)
+    readonly property string translateDependencyMessage: DependencyUtils.getTranslateMessage(dependencyStatus, uiLanguage, I18n)
+    readonly property string screenshotDependencyMessage: DependencyUtils.getScreenshotMessage(dependencyStatus, uiLanguage, I18n)
     readonly property string dependencyBannerText: {
         if (translateDependencyMessage.length > 0) {
             return translateDependencyMessage;
@@ -736,7 +736,8 @@ PluginComponent {
                                     I18n.t(root.uiLanguage, "textTranslation"),
                                     root.canTranslateText,
                                     root.translateDependencyMessage,
-                                    root.uiLanguage
+                                    root.uiLanguage,
+                                    I18n
                                 )
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Theme.fontSizeSmall
@@ -749,7 +750,8 @@ PluginComponent {
                                     I18n.t(root.uiLanguage, "screenshotOcr"),
                                     root.canScreenshotTranslate,
                                     root.screenshotDependencyMessage,
-                                    root.uiLanguage
+                                    root.uiLanguage,
+                                    I18n
                                 )
                                 wrapMode: Text.WordWrap
                                 font.pixelSize: Theme.fontSizeSmall

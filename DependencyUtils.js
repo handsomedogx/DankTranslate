@@ -4,10 +4,6 @@ function isZh(uiLanguage) {
     return uiLanguage === "zh";
 }
 
-function localizedText(uiLanguage, enText, zhText) {
-    return isZh(uiLanguage) ? zhText : enText;
-}
-
 function defaultStatus() {
     return {
         "checked": false,
@@ -36,13 +32,13 @@ function parseCsv(value) {
     return value.split(",").map(entry => entry.trim()).filter(entry => entry.length > 0);
 }
 
-function parseProbeOutput(raw, uiLanguage) {
+function parseProbeOutput(raw, uiLanguage, i18n) {
     const status = defaultStatus();
     const rawText = (raw || "").trim();
 
     if (rawText.length === 0) {
         status.checked = true;
-        status.probeError = localizedText(uiLanguage, "Dependency check returned no output.", "依赖检查没有返回任何输出。");
+        status.probeError = i18n.t(uiLanguage, "dependencyCheckNoOutput");
         return status;
     }
 
@@ -75,7 +71,7 @@ function probeCommand(scriptPath, ocrLanguages) {
 }
 
 function finalizeProbeStatus(raw, exitCode, uiLanguage, i18n) {
-    const parsed = parseProbeOutput(raw, uiLanguage);
+    const parsed = parseProbeOutput(raw, uiLanguage, i18n);
     parsed.loading = false;
     if (exitCode !== 0 && !parsed.probeError) {
         parsed.probeError = i18n.t(uiLanguage, "dependencyProbeExitCode", {
@@ -85,21 +81,19 @@ function finalizeProbeStatus(raw, exitCode, uiLanguage, i18n) {
     return parsed;
 }
 
-function formatMissingList(values) {
-    return values.join(", ");
-}
-
 function formatMissingListForUi(values, uiLanguage) {
     return values.join(isZh(uiLanguage) ? "、" : ", ");
 }
 
-function getTranslateMessage(status, uiLanguage) {
+function getTranslateMessage(status, uiLanguage, i18n) {
     if (!status.checked) {
-        return localizedText(uiLanguage, "Checking translation dependencies...", "正在检查文本翻译依赖...");
+        return i18n.t(uiLanguage, "checkingTranslationDependencies");
     }
 
     if (status.probeError) {
-        return localizedText(uiLanguage, "Dependency check failed: ", "依赖检查失败：") + status.probeError;
+        return i18n.t(uiLanguage, "dependencyCheckFailed", {
+            "error": status.probeError
+        });
     }
 
     const missing = [];
@@ -110,24 +104,27 @@ function getTranslateMessage(status, uiLanguage) {
         missing.push("python3");
     }
     if (!status.helper) {
-        missing.push(localizedText(uiLanguage, "translate helper script", "翻译辅助脚本"));
+        missing.push(i18n.t(uiLanguage, "translateHelperScript"));
     }
 
     if (missing.length === 0) {
         return "";
     }
 
-    return localizedText(uiLanguage, "Text translation unavailable: missing ", "文本翻译不可用：缺少")
-        + formatMissingListForUi(missing, uiLanguage) + ".";
+    return i18n.t(uiLanguage, "textTranslationUnavailable", {
+        "items": formatMissingListForUi(missing, uiLanguage)
+    });
 }
 
-function getScreenshotMessage(status, uiLanguage) {
+function getScreenshotMessage(status, uiLanguage, i18n) {
     if (!status.checked) {
-        return localizedText(uiLanguage, "Checking screenshot OCR dependencies...", "正在检查截图 OCR 依赖...");
+        return i18n.t(uiLanguage, "checkingScreenshotDependencies");
     }
 
     if (status.probeError) {
-        return localizedText(uiLanguage, "Dependency check failed: ", "依赖检查失败：") + status.probeError;
+        return i18n.t(uiLanguage, "dependencyCheckFailed", {
+            "error": status.probeError
+        });
     }
 
     const problems = [];
@@ -135,19 +132,22 @@ function getScreenshotMessage(status, uiLanguage) {
         problems.push("tesseract");
     }
     if (status.missingOcrLanguages.length > 0) {
-        problems.push(localizedText(uiLanguage, "OCR languages: ", "OCR 语言：") + formatMissingListForUi(status.missingOcrLanguages, uiLanguage));
+        problems.push(i18n.t(uiLanguage, "ocrLanguagesLabel", {
+            "items": formatMissingListForUi(status.missingOcrLanguages, uiLanguage)
+        }));
     }
 
     if (problems.length === 0) {
         return "";
     }
 
-    return localizedText(uiLanguage, "Screenshot OCR unavailable: ", "截图 OCR 不可用：")
-        + problems.join(isZh(uiLanguage) ? "；" : "; ") + ".";
+    return i18n.t(uiLanguage, "screenshotUnavailable", {
+        "items": problems.join(isZh(uiLanguage) ? "；" : "; ")
+    });
 }
 
-function formatStatusLine(label, ok, details, uiLanguage) {
-    let line = label + ": " + (ok ? localizedText(uiLanguage, "OK", "正常") : localizedText(uiLanguage, "Missing", "缺失"));
+function formatStatusLine(label, ok, details, uiLanguage, i18n) {
+    let line = label + ": " + (ok ? i18n.t(uiLanguage, "ok") : i18n.t(uiLanguage, "missing"));
     if (details && details.length > 0) {
         line += " (" + details + ")";
     }

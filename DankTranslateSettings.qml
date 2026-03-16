@@ -641,7 +641,7 @@ PluginSettings {
                 width: parent.width
                 text: dependencyStatus.loading
                     ? I18n.t(root.uiLanguage, "checkingDependencies")
-                    : DependencyUtils.formatStatusLine("DMS CLI", dependencyStatus.dms, "", root.uiLanguage)
+                    : DependencyUtils.formatStatusLine("DMS CLI", dependencyStatus.dms, "", root.uiLanguage, I18n)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.loading || dependencyStatus.dms ? Theme.surfaceVariantText : Theme.warning
@@ -649,7 +649,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine("python3", dependencyStatus.python3, "", root.uiLanguage)
+                text: DependencyUtils.formatStatusLine("python3", dependencyStatus.python3, "", root.uiLanguage, I18n)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.python3 ? Theme.surfaceVariantText : Theme.warning
@@ -657,7 +657,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine(I18n.t(root.uiLanguage, "translateHelperScript"), dependencyStatus.helper, "", root.uiLanguage)
+                text: DependencyUtils.formatStatusLine(I18n.t(root.uiLanguage, "translateHelperScript"), dependencyStatus.helper, "", root.uiLanguage, I18n)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.helper ? Theme.surfaceVariantText : Theme.warning
@@ -665,7 +665,7 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.formatStatusLine("tesseract", dependencyStatus.tesseract, "", root.uiLanguage)
+                text: DependencyUtils.formatStatusLine("tesseract", dependencyStatus.tesseract, "", root.uiLanguage, I18n)
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: dependencyStatus.tesseract ? Theme.surfaceVariantText : Theme.warning
@@ -718,8 +718,8 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage)
-                visible: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage).length > 0
+                text: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage, I18n)
+                visible: DependencyUtils.getTranslateMessage(dependencyStatus, root.uiLanguage, I18n).length > 0
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.warning
@@ -727,8 +727,8 @@ PluginSettings {
 
             StyledText {
                 width: parent.width
-                text: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage)
-                visible: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage).length > 0
+                text: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage, I18n)
+                visible: DependencyUtils.getScreenshotMessage(dependencyStatus, root.uiLanguage, I18n).length > 0
                 wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.warning
