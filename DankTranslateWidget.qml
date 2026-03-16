@@ -44,15 +44,15 @@ PluginComponent {
     readonly property real maxInputViewportHeight: 220
     readonly property real maxResultViewportHeight: 200
     readonly property string backendConfigurationMessage: {
-        if (translationBackend !== "openai") {
+        if (currentTranslationBackend() !== "openai") {
             return "";
         }
 
         const missing = [];
-        if (normalizeSettingText(openaiBaseUrl).length === 0) {
+        if (currentOpenaiBaseUrl().length === 0) {
             missing.push(I18n.t(uiLanguage, "backendBaseUrlShort"));
         }
-        if (normalizeSettingText(openaiModel).length === 0) {
+        if (currentOpenaiModel().length === 0) {
             missing.push(I18n.t(uiLanguage, "backendModelShort"));
         }
         if (missing.length === 0) {
@@ -111,6 +111,30 @@ PluginComponent {
         return pluginSettingValue(key, fallback);
     }
 
+    function currentTranslationBackend() {
+        return normalizeSettingText(loadSettingValue("translationBackend", translationBackend || "google")) || "google";
+    }
+
+    function currentOpenaiBaseUrl() {
+        return normalizeSettingText(loadSettingValue("openaiBaseUrl", openaiBaseUrl));
+    }
+
+    function currentOpenaiModel() {
+        return normalizeSettingText(loadSettingValue("openaiModel", openaiModel));
+    }
+
+    function currentOpenaiApiKey() {
+        return normalizeSettingText(loadSettingValue("openaiApiKey", openaiApiKey));
+    }
+
+    function currentOpenaiSystemPrompt() {
+        return loadSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
+    }
+
+    function currentOpenaiUserPrompt() {
+        return loadSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
+    }
+
     function detectedSourceDisplayText() {
         const normalized = normalizeSettingText(lastDetectedSource).toLowerCase();
         if (normalized === "en" || normalized.indexOf("en-") === 0) {
@@ -123,9 +147,10 @@ PluginComponent {
     }
 
     function backendInlineText() {
-        const backendName = I18n.backendLabel(uiLanguage, translationBackend);
-        const normalizedModel = normalizeSettingText(openaiModel);
-        if (translationBackend === "openai" && normalizedModel.length > 0) {
+        const activeBackend = currentTranslationBackend();
+        const backendName = I18n.backendLabel(uiLanguage, activeBackend);
+        const normalizedModel = currentOpenaiModel();
+        if (activeBackend === "openai" && normalizedModel.length > 0) {
             return backendName + " (" + normalizedModel + ")";
         }
         return backendName;
@@ -151,12 +176,12 @@ PluginComponent {
         ocrLanguages = loadSettingValue("ocrLanguages", ocrLanguages || "eng+chi_sim");
         autoCopyResult = loadSettingValue("autoCopyResult", autoCopyResult);
         rememberLastInput = loadSettingValue("rememberLastInput", rememberLastInput);
-        translationBackend = loadSettingValue("translationBackend", translationBackend || "google");
-        openaiBaseUrl = normalizeSettingText(loadSettingValue("openaiBaseUrl", openaiBaseUrl));
-        openaiModel = normalizeSettingText(loadSettingValue("openaiModel", openaiModel));
-        openaiApiKey = normalizeSettingText(loadSettingValue("openaiApiKey", openaiApiKey));
-        openaiSystemPrompt = loadSettingValue("openaiSystemPrompt", openaiSystemPrompt || I18n.defaultOpenaiSystemPrompt());
-        openaiUserPrompt = loadSettingValue("openaiUserPrompt", openaiUserPrompt || I18n.defaultOpenaiUserPromptTemplate());
+        translationBackend = currentTranslationBackend();
+        openaiBaseUrl = currentOpenaiBaseUrl();
+        openaiModel = currentOpenaiModel();
+        openaiApiKey = currentOpenaiApiKey();
+        openaiSystemPrompt = currentOpenaiSystemPrompt();
+        openaiUserPrompt = currentOpenaiUserPrompt();
         refreshDependencyStatus();
     }
 
@@ -212,14 +237,17 @@ PluginComponent {
     }
 
     function buildTranslationBackendArgs() {
-        const args = ["--backend", translationBackend];
-        if (translationBackend !== "openai") {
+        const activeBackend = currentTranslationBackend();
+        const args = ["--backend", activeBackend];
+        if (activeBackend !== "openai") {
             return args;
         }
 
-        const baseUrl = normalizeSettingText(openaiBaseUrl);
-        const model = normalizeSettingText(openaiModel);
-        const apiKey = normalizeSettingText(openaiApiKey);
+        const baseUrl = currentOpenaiBaseUrl();
+        const model = currentOpenaiModel();
+        const apiKey = currentOpenaiApiKey();
+        const systemPrompt = currentOpenaiSystemPrompt();
+        const userPrompt = currentOpenaiUserPrompt();
 
         if (baseUrl.length > 0) {
             args.push("--openai-base-url", baseUrl);
@@ -230,11 +258,11 @@ PluginComponent {
         if (apiKey.length > 0) {
             args.push("--openai-api-key", apiKey);
         }
-        if (openaiSystemPrompt.length > 0) {
-            args.push("--openai-system-prompt", openaiSystemPrompt);
+        if (systemPrompt.length > 0) {
+            args.push("--openai-system-prompt", systemPrompt);
         }
-        if (openaiUserPrompt.length > 0) {
-            args.push("--openai-user-prompt", openaiUserPrompt);
+        if (userPrompt.length > 0) {
+            args.push("--openai-user-prompt", userPrompt);
         }
 
         return args;
