@@ -39,7 +39,6 @@ PluginComponent {
     readonly property string dependencyScriptPath: resolveFilePath("./scripts/check_dependencies.sh")
     readonly property string uiLanguage: I18n.detectUiLanguage(Qt.locale().name)
     readonly property string targetName: I18n.languageName(uiLanguage, targetLang)
-    readonly property string backendDisplayText: I18n.backendDisplayText(uiLanguage, translationBackend, openaiModel)
     readonly property real availableScreenHeight: root.parentScreen?.height ?? Screen.height
     readonly property real maxTranslateViewHeight: Math.max(260, Math.min(680, availableScreenHeight - 180))
     readonly property real maxInputViewportHeight: 220
@@ -96,6 +95,40 @@ PluginComponent {
             return "";
         }
         return String(value).trim();
+    }
+
+    function detectedSourceDisplayText() {
+        const normalized = normalizeSettingText(lastDetectedSource).toLowerCase();
+        if (normalized === "en" || normalized.indexOf("en-") === 0) {
+            return "English";
+        }
+        if (normalized === "zh" || normalized === "zh-cn" || normalized.indexOf("zh-") === 0) {
+            return "中文";
+        }
+        return normalizeSettingText(lastDetectedSource);
+    }
+
+    function backendInlineText() {
+        const backendName = I18n.backendLabel(uiLanguage, translationBackend);
+        const normalizedModel = normalizeSettingText(openaiModel);
+        if (translationBackend === "openai" && normalizedModel.length > 0) {
+            return backendName + " (" + normalizedModel + ")";
+        }
+        return backendName;
+    }
+
+    function translationMetadataText() {
+        const parts = [];
+        const detectedSource = detectedSourceDisplayText();
+
+        if (detectedSource.length > 0) {
+            parts.push(I18n.t(uiLanguage, "detectedSource", {
+                "value": detectedSource
+            }));
+        }
+
+        parts.push(backendInlineText());
+        return parts.join("  ·  ");
     }
 
     function syncSettings() {
@@ -835,27 +868,6 @@ PluginComponent {
                         }
                     }
 
-                    StyledRect {
-                        width: parent.width
-                        radius: Theme.cornerRadius
-                        color: Theme.surfaceContainerHigh
-                        border.color: Theme.outlineMedium
-                        border.width: 1
-                        implicitHeight: backendIndicatorText.implicitHeight + Theme.spacingM * 2
-
-                        StyledText {
-                            id: backendIndicatorText
-
-                            width: parent.width - Theme.spacingM * 2
-                            x: Theme.spacingM
-                            y: Theme.spacingM
-                            text: root.backendDisplayText
-                            wrapMode: Text.WordWrap
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                        }
-                    }
-
                     Row {
                         width: parent.width
                         spacing: Theme.spacingS
@@ -1029,8 +1041,8 @@ PluginComponent {
 
                             StyledText {
                                 width: parent.width
-                                visible: root.lastDetectedSource.length > 0
-                                text: I18n.t(root.uiLanguage, "detectedSource", {"value": root.lastDetectedSource})
+                                visible: root.translatedText.length > 0 || root.lastDetectedSource.length > 0
+                                text: root.translationMetadataText()
                                 wrapMode: Text.WordWrap
                                 color: Theme.surfaceVariantText
                                 font.pixelSize: Theme.fontSizeSmall

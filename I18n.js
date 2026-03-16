@@ -100,8 +100,6 @@ const STRINGS = {
         "copyResult": "Copy Result",
         "clear": "Clear",
         "translation": "Translation",
-        "backendInUse": "Current backend: {value}",
-        "backendInUseWithModel": "Current backend: {value} ({model})",
         "translationPlaceholder": "Translated text will appear here.",
         "detectedSource": "Detected source: {value}",
         "dependencyProbeExitCode": "Dependency probe exited with code {code}",
@@ -218,8 +216,6 @@ const STRINGS = {
         "copyResult": "复制结果",
         "clear": "清空",
         "translation": "译文",
-        "backendInUse": "当前后端：{value}",
-        "backendInUseWithModel": "当前后端：{value}（{model}）",
         "translationPlaceholder": "译文会显示在这里。",
         "detectedSource": "检测到的源语言：{value}",
         "dependencyProbeExitCode": "依赖检查退出码：{code}",
@@ -314,20 +310,6 @@ function backendValue(uiLanguage, label) {
         return "openai";
     }
     return "google";
-}
-
-function backendDisplayText(uiLanguage, backend, model) {
-    const backendName = backendLabel(uiLanguage, backend);
-    const normalizedModel = String(model || "").trim();
-    if (backend === "openai" && normalizedModel.length > 0) {
-        return t(uiLanguage, "backendInUseWithModel", {
-            "value": backendName,
-            "model": normalizedModel
-        });
-    }
-    return t(uiLanguage, "backendInUse", {
-        "value": backendName
-    });
 }
 
 function defaultBackendTestText(uiLanguage) {
