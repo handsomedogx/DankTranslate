@@ -317,7 +317,7 @@ def run_tesseract(image_path, languages):
         error = process.stderr.strip()
         raise RuntimeError(error or "tesseract OCR failed.")
 
-    text = clean_text(process.stdout)
+    text = clean_ocr_text(process.stdout)
     if not text:
         raise RuntimeError("OCR did not detect any text in the screenshot.")
     return text
@@ -396,7 +396,7 @@ def handle_screenshot(args):
         image_path = handle.name
 
     try:
-        ocr_text = clean_ocr_text(run_tesseract(image_path, args.ocr_languages))
+        ocr_text = run_tesseract(image_path, args.ocr_languages)
         target = infer_target_language(ocr_text, args.target)
         translated = translate_text(
             ocr_text,
