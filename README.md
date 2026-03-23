@@ -1,5 +1,11 @@
 # Dank Translate
 
+<p align="center">
+  <img src="assets/setting.png" height="450">
+  <img src="assets/ui.png" height="450">
+</p>
+
+
 `Dank Translate` is a DankMaterialShell widget plugin for:
 
 - opening a translator popout from the bar or a keyboard shortcut
