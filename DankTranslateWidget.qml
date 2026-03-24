@@ -307,11 +307,11 @@ PluginComponent {
     }
 
     function copyText(text, successMessage) {
-        const normalized = (text || "").trim();
-        if (!normalized) {
+        const rawText = text === undefined || text === null ? "" : String(text);
+        if (rawText.trim().length === 0) {
             return;
         }
-        Quickshell.execDetached(["dms", "cl", "copy", normalized]);
+        Quickshell.clipboardText = rawText;
         ToastService.showInfo(successMessage, "", "", "dank-translate");
     }
 
